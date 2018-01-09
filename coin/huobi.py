@@ -10,4 +10,4 @@ headers = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,imag
 r = requests.get(url, headers=headers)
 avg_price = sum([d['price'] for d in r.json().get('data', [])]) / 10
 r = redis.StrictRedis(db=8)
-r.lpush("usdt_price", json.dumps({"price": avg_price, "time": int(time.time())}))
+r.lpush("usdt_price", json.dumps({"price": avg_price, "time": int(time.time()), "format_time": time.ctime()}))
