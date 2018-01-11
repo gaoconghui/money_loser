@@ -50,6 +50,7 @@ class Huobi(threading.Thread):
         self.depth_subs = set()
 
     def subscribe_depth(self, symbol):
+        logger.info("subscribe depth {s}".format(s=symbol))
         self.depth_subs.add(symbol)
         sub_name = "market.{symbol}.depth.step0".format(symbol=symbol)
         if sub_name in self.subscribe_list:
@@ -59,10 +60,13 @@ class Huobi(threading.Thread):
         self.ws.send(trade_str)
 
     def reconnect(self):
+        logger.info("huobi need reconnect")
         if self.ws.connected:
+            logger.info("huobi is connected , close connection")
             self.ws.close()
         self.subscribe_list = []
         self.ws = create_connection("wss://api.huobipro.com/ws")
+        logger.info("resubscribe depth")
         for symbol in self.depth_subs:
             self.subscribe_depth(symbol)
 
@@ -100,8 +104,9 @@ class Huobi(threading.Thread):
         while True:
             try:
                 self.parse_receive(self.ws.recv())
-            except Exception as e:
-                logger.error(e.message)
+            except:
+                import traceback
+                logger.error(traceback.format_exc())
                 if reconnect_count > 5:
                     break
                 self.reconnect()
