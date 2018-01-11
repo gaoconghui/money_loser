@@ -38,18 +38,20 @@ def gunziptxt(data):
 # 请求 Market Detail 数据
 # tradeStr="""{"req": "market.ethusdt.detail", "id": "id12"}"""
 
-class Huobi(object):
+class Huobi(threading.Thread):
     def __init__(self):
+        super(Huobi, self).__init__()
         self.ws = create_connection("wss://api.huobipro.com/ws")
         self.running = True
+        self.subscribe_list = []
 
     def subscribe_depth(self, symbol):
-        trade_str = json.dumps({"sub": "market.{symbol}.depth.step0".format(symbol=symbol), "id": "id10"})
+        sub_name = "market.{symbol}.depth.step0".format(symbol=symbol)
+        if sub_name in self.subscribe_list:
+            return True
+        self.subscribe_list.append(sub_name)
+        trade_str = json.dumps({"sub": sub_name, "id": "id10"})
         self.ws.send(trade_str)
-
-    def recv(self):
-        while self.running:
-            self.parse_receive(self.ws.recv())
 
     def parse_receive(self, content):
         if not content:
@@ -81,5 +83,5 @@ class Huobi(object):
         self.ws.send(json.dumps(pong_content))
 
     def run(self):
-        recv_thread = threading.Thread(target=self.recv)
-        recv_thread.start()
+        while True:
+            self.parse_receive(self.ws.recv())
