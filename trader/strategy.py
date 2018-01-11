@@ -3,7 +3,7 @@ import logging
 import threading
 import time
 
-from data_center import rate_center, TradeItem
+from data_center import TradeItem, update_center, from_center, is_ready
 
 logger = logging.getLogger(__name__)
 
@@ -32,28 +32,28 @@ class StrategyOne(StrategyBase):
         huobi_conn.subscribe_depth("ethusdt")
 
     def compute_chain(self):
-        if self.coin_btc_name in rate_center and "btcusdt" in rate_center:
-            rate_center[self.coin_btc_usdt_name] = self._compute_chain(self.coin_btc_name, "btcusdt")
+        if is_ready(self.coin_btc_name) and is_ready("btcusdt"):
+            bid, ask = self._compute_chain(self.coin_btc_name, "btcusdt")
+            update_center(symbol=self.coin_btc_usdt_name, bid=bid, ask=ask)
 
-        if self.coin_eth_name in rate_center and "ethusdt" in rate_center:
-            rate_center[self.coin_eth_usdt_name] = self._compute_chain(self.coin_eth_name, "ethusdt")
+        if is_ready(self.coin_eth_name) and is_ready("ethusdt"):
+            bid, ask = self._compute_chain(self.coin_eth_name, "ethusdt")
+            update_center(symbol=self.coin_eth_usdt_name, bid=bid, ask=ask)
 
     def _compute_chain(self, chain_1, chain_2):
-        if chain_1 in rate_center and chain_2 in rate_center:
-            chain_item1 = rate_center[chain_1]
-            chain_item2 = rate_center[chain_2]
-            result = {
-                "bid": TradeItem(price=chain_item1['bid'].price * chain_item2['bid'].price,
-                                 count=chain_item1['bid'].count),
-                "ask": TradeItem(price=chain_item1['ask'].price * chain_item2['ask'].price,
-                                 count=chain_item1['ask'].count)
-            }
-            return result
+        if is_ready(chain_1) and is_ready(chain_2):
+            chain_item1 = from_center(chain_1)
+            chain_item2 = from_center(chain_2)
+            bid = TradeItem(price=chain_item1['bid'].price * chain_item2['bid'].price,
+                            count=chain_item1['bid'].count)
+            ask = TradeItem(price=chain_item1['ask'].price * chain_item2['ask'].price,
+                            count=chain_item1['ask'].count)
+            return bid, ask
 
     def deal(self, sell, buy):
-        sell_price = rate_center[sell]['bid'].price
-        buy_price = rate_center[buy]['ask'].price
-        count = min(rate_center[sell]['bid'].count, rate_center[buy]['ask'].count)
+        sell_price = from_center(sell)['bid'].price
+        buy_price = from_center(buy)['ask'].price
+        count = min(from_center(sell)['bid'].count, from_center(buy)['ask'].count)
         earn = (sell_price * 0.998 - buy_price * 1.002) * count
         logger.info(
             "sell {sell} and buy {buy} , {p1} --> {p2} , count : {count} , earn : {earn}".format(sell=sell, buy=buy,
@@ -66,13 +66,14 @@ class StrategyOne(StrategyBase):
         while True:
             time.sleep(.1)
             self.compute_chain()
-            btc_chain = rate_center.get(self.coin_btc_usdt_name)
-            eth_chain = rate_center.get(self.coin_eth_usdt_name)
+            btc_chain = from_center(self.coin_btc_usdt_name)
+            eth_chain = from_center(self.coin_eth_usdt_name)
             if not btc_chain or not eth_chain:
                 continue
-            if btc_chain["bid"].price * 0.998 > eth_chain['ask'].price * 1.002:
-                self.deal(sell=self.coin_btc_usdt_name, buy=self.coin_eth_usdt_name)
-                time.sleep(1)
-            if eth_chain["bid"].price * 0.998 > btc_chain['ask'].price * 1.002:
-                self.deal(sell=self.coin_eth_usdt_name, buy=self.coin_btc_usdt_name)
-                time.sleep(1)
+            if is_ready(self.coin_btc_usdt_name) and is_ready(self.coin_eth_usdt_name):
+                if btc_chain["bid"].price * 0.998 > eth_chain['ask'].price * 1.002:
+                    self.deal(sell=self.coin_btc_usdt_name, buy=self.coin_eth_usdt_name)
+                    time.sleep(1)
+                if eth_chain["bid"].price * 0.998 > btc_chain['ask'].price * 1.002:
+                    self.deal(sell=self.coin_eth_usdt_name, buy=self.coin_btc_usdt_name)
+                    time.sleep(1)

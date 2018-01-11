@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
+import logging
+import time
 from collections import namedtuple
+
+logger = logging.getLogger(__name__)
 
 
 class Singleton(type):
@@ -11,28 +15,32 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-class BaseCoin(object):
-    def to_usdt(self):
-        key = "%s%s" % (self.__name__, "usdt")
-        if key not in rate_center:
-            return None
-        rate = rate_center.get(key)
-
-
-class Btc(BaseCoin):
-    __metaclass__ = Singleton
-    __name__ = "btc"
-
-
 TradeItem = namedtuple("TradeItem", field_names=["price", "count"])
 
 
 def update_center(symbol, bid, ask):
-    rate_center[symbol] = {"bid": bid, "ask": ask}
+    _rate_center[symbol] = {"bid": bid, "ask": ask}
+    _update_map[symbol] = time.time()
 
 
-rate_center = {
+def from_center(symbol):
+    return _rate_center.get(symbol)
+
+
+def is_ready(symbol):
+    if time.time() - _update_map.get(symbol, 0) < 10:
+        return True
+    logger.info("{s} not ready".format(s=symbol))
+    return False
+
+
+# 不能直接操作
+_rate_center = {
     # bid : 能马上卖的最高价
     # ask : 能马上买的最低价
     # symbol : {bid : (price,size) , ask:(price,size)}
+}
+
+_update_map = {
+
 }

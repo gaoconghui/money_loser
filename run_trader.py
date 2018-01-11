@@ -1,15 +1,16 @@
 import json
 import logging
 import logging.handlers
-import time
 import os
 import sys
+import time
+
 _video_sch_dir = '%s/' % os.path.dirname(os.path.realpath(__file__))
 _filepath = os.path.dirname(sys.argv[0])
 sys.path.insert(1, os.path.join(_filepath, _video_sch_dir))
 import redis
 
-from trader.data_center import rate_center
+from trader.data_center import from_center
 from trader.huobi import Huobi
 from trader.strategy import StrategyOne
 
@@ -18,8 +19,8 @@ r = redis.StrictRedis(db=7)
 
 
 def dump():
-    waxbtcusdt = rate_center.get("waxbtcusdt")
-    waxethusdt = rate_center.get("waxethusdt")
+    waxbtcusdt = from_center("waxbtcusdt")
+    waxethusdt = from_center("waxethusdt")
     item = {"time": int(time.time()),
             "waxbtcusdt": waxbtcusdt,
             "waxethusdt": waxethusdt}
@@ -62,6 +63,6 @@ if __name__ == '__main__':
         time.sleep(1)
         if i % 10 == 0:
             logger.info("heartbeat {t}".format(t=time.ctime()))
-            logger.info(rate_center.get("waxbtcusdt"))
-            logger.info(rate_center.get("waxethusdt"))
+            logger.info(from_center("waxbtcusdt"))
+            logger.info(from_center("waxethusdt"))
         dump()
