@@ -2,12 +2,15 @@
 
 import gzip
 import json
+import logging
 import threading
 
 from six import StringIO
 from websocket import create_connection
 
 from data_center import update_center, TradeItem
+
+logger = logging.getLogger(__name__)
 
 
 def gunziptxt(data):
@@ -44,14 +47,24 @@ class Huobi(threading.Thread):
         self.ws = create_connection("wss://api.huobipro.com/ws")
         self.running = True
         self.subscribe_list = []
+        self.depth_subs = set()
 
     def subscribe_depth(self, symbol):
+        self.depth_subs.add(symbol)
         sub_name = "market.{symbol}.depth.step0".format(symbol=symbol)
         if sub_name in self.subscribe_list:
             return True
         self.subscribe_list.append(sub_name)
         trade_str = json.dumps({"sub": sub_name, "id": "id10"})
         self.ws.send(trade_str)
+
+    def reconnect(self):
+        if self.ws.connected:
+            self.ws.close()
+        self.subscribe_list = []
+        self.ws = create_connection("wss://api.huobipro.com/ws")
+        for symbol in self.depth_subs:
+            self.subscribe_depth(symbol)
 
     def parse_receive(self, content):
         if not content:
@@ -83,5 +96,13 @@ class Huobi(threading.Thread):
         self.ws.send(json.dumps(pong_content))
 
     def run(self):
+        reconnect_count = 0
         while True:
-            self.parse_receive(self.ws.recv())
+            try:
+                self.parse_receive(self.ws.recv())
+            except Exception as e:
+                logger.error(e.message)
+                if reconnect_count > 5:
+                    break
+                self.reconnect()
+                reconnect_count += 1
