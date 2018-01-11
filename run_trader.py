@@ -59,8 +59,8 @@ if __name__ == '__main__':
     i = 0
     while True:
         i += 1
-        time.sleep(.01)
-        if i % 100 == 0:
+        time.sleep(1)
+        if i % 10 == 0:
             logger.info("heartbeat {t}".format(t=time.ctime()))
             logger.info(rate_center.get("waxbtcusdt"))
             logger.info(rate_center.get("waxethusdt"))
