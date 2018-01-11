@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+import logging
 import threading
 import time
 
 from data_center import rate_center, TradeItem
+
+logger = logging.getLogger(__name__)
 
 
 class StrategyBase(threading.Thread):
@@ -52,11 +55,12 @@ class StrategyOne(StrategyBase):
         buy_price = rate_center[buy]['ask'].price
         count = min(rate_center[sell]['bid'].count, rate_center[buy]['ask'].count)
         earn = (sell_price * 0.998 - buy_price * 1.002) * count
-        print "sell {sell} and buy {buy} , {p1} --> {p2} , count : {count} , earn : {earn}".format(sell=sell, buy=buy,
-                                                                                                   p1=sell_price,
-                                                                                                   p2=buy_price,
-                                                                                                   count=count,
-                                                                                                   earn=earn)
+        logger.info(
+            "sell {sell} and buy {buy} , {p1} --> {p2} , count : {count} , earn : {earn}".format(sell=sell, buy=buy,
+                                                                                                 p1=sell_price,
+                                                                                                 p2=buy_price,
+                                                                                                 count=count,
+                                                                                                 earn=earn))
 
     def run(self):
         while True:
