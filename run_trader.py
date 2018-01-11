@@ -1,11 +1,24 @@
+import json
 import logging
 import logging.handlers
 import time
+
+import redis
 
 from trader.coin import Huobi
 from trader.data_center import compute_wax, rate_center
 
 logger = logging.getLogger(__name__)
+r = redis.StrictRedis(db=7)
+
+
+def dump():
+    waxbtcusdt = rate_center.get("waxbtcusdt")
+    waxethusdt = rate_center.get("waxethusdt")
+    item = {"time": int(time.time()),
+            "waxbtcusdt": waxbtcusdt,
+            "waxethusdt": waxethusdt}
+    r.lpush("wax_price", json.dumps(item))
 
 
 def init_log():
@@ -55,23 +68,30 @@ if __name__ == '__main__':
         if not waxbtcusdt or not waxethusdt:
             continue
 
-        if waxbtcusdt["bid"].price > waxethusdt['ask'].price:
-            logger.info("sell waxbtc and buy waxeth {p1} --> {p2} , earn {earn}".format(p1=waxbtcusdt["bid"].price,
-                                                                                        p2=waxethusdt['ask'].price,
-                                                                                        earn=(waxbtcusdt["bid"].price -
-                                                                                              waxethusdt[
-                                                                                                  'ask'].price) * min(
-                                                                                            waxbtcusdt["bid"].count,
-                                                                                            waxethusdt['ask'].count)))
+        dump()
+        if waxbtcusdt["bid"].price * 0.998 > waxethusdt['ask'].price * 1.002:
+            logger.info("sell waxbtc and buy waxeth {p1} --> {p2} ,count : {count}"
+                        " earn {earn}".format(p1=waxbtcusdt["bid"].price,
+                                              p2=waxethusdt['ask'].price,
+                                              count=min(
+                                                  waxbtcusdt["bid"].count,
+                                                  waxethusdt['ask'].count),
+                                              earn=(waxbtcusdt["bid"].price * 0.998 - waxethusdt[
+                                                  'ask'].price) * 1.002 * min(
+                                                  waxbtcusdt["bid"].count,
+                                                  waxethusdt['ask'].count)))
             time.sleep(1)
 
-        if waxethusdt["bid"].price > waxbtcusdt['ask'].price:
-            logger.info("sell waxeth and buy waxbtc {p1} --> {p2} ,earn {earn}".format(p1=waxethusdt["bid"].price,
-                                                                                       p2=waxbtcusdt['ask'].price,
-                                                                                       earn=(waxethusdt["bid"].price -
-                                                                                             waxbtcusdt[
-                                                                                                 'ask'].price) * min(
-                                                                                           waxbtcusdt["bid"].count,
-                                                                                           waxethusdt['ask'].count)
-                                                                                       ))
+        if waxethusdt["bid"].price * 0.998 > waxbtcusdt['ask'].price * 1.002:
+            logger.info("sell waxeth and buy waxbtc {p1} --> {p2} ,count : {count},"
+                        "earn {earn}".format(p1=waxethusdt["bid"].price,
+                                             p2=waxbtcusdt['ask'].price,
+                                             count=min(
+                                                 waxbtcusdt["bid"].count,
+                                                 waxethusdt['ask'].count),
+                                             earn=(waxethusdt["bid"].price * 0.998 -
+                                                   waxbtcusdt['ask'].price * 1.002) * min(
+                                                 waxbtcusdt["bid"].count,
+                                                 waxethusdt['ask'].count)
+                                             ))
             time.sleep(1)
