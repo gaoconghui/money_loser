@@ -28,7 +28,7 @@ def from_center(symbol):
 
 
 def is_ready(symbol):
-    if time.time() - _update_map.get(symbol, 0) < 10:
+    if time.time() - _update_map.get(symbol, 0) < 60:
         return True
     logger.info("{s} not ready".format(s=symbol))
     return False
