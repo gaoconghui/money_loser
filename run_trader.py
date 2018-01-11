@@ -45,6 +45,8 @@ if __name__ == '__main__':
         i += 1
         if i % 1000 == 0:
             logger.info("heartbeat {t}".format(t=time.ctime()))
+            logger.info(rate_center.get("waxbtcusdt"))
+            logger.info(rate_center.get("waxethusdt"))
         time.sleep(.01)
         compute_wax()
         waxbtcusdt = rate_center.get("waxbtcusdt")

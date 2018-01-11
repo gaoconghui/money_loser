@@ -66,8 +66,8 @@ class Huobi(object):
 
     def parse_depth_recv(self, item):
         symbol = self.parse_symbol(item.get("ch"))
-        bids = item['tick']['bids'][:2]
-        asks = item['tick']['asks'][:2]
+        bids = item['tick']['bids'][:1]
+        asks = item['tick']['asks'][:1]
 
         update_center(symbol=symbol,
                       bid=TradeItem(bids[-1][0], sum([b[1] for b in bids])),
