@@ -22,9 +22,15 @@ def get_stock_history(stock_id, start, end):
                                          StockFields.CHGPCT, StockFields.HIGHEST_PRICE, StockFields.LOWEST_PRICE,
                                          StockFields.TURNOVER_VOL, StockFields.TURNOVER_VALUE,
                                          StockFields.TURNOVER_RATE])
-        return result.set_index("date")
+        # 删除百分号
+        result.loc[:, StockFields.CHGPCT] = result.loc[:, StockFields.CHGPCT].map(lambda x: x.strip("%"))
+        result.loc[:, StockFields.TURNOVER_RATE] = result.loc[:, StockFields.TURNOVER_RATE].map(lambda x: x.strip("%"))
+        result = result.astype(dtype=StockFields.DTYPES, copy=False)
+        result.set_index("date", inplace=True)
+        return result
 
 
 if __name__ == '__main__':
     # print _get_stock_history("zs_000001", start="20150504", end="20151215")
     frame = get_stock_history("cn_600019", start="20150504", end="20151215")
+    print frame.dtypes
