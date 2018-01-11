@@ -71,8 +71,8 @@ class StrategyOne(StrategyBase):
             if not btc_chain or not eth_chain:
                 continue
             if btc_chain["bid"].price * 0.998 > eth_chain['ask'].price * 1.002:
-                self.deal(sell=self.coin_btc_name, buy=self.coin_eth_name)
+                self.deal(sell=self.coin_btc_usdt_name, buy=self.coin_eth_usdt_name)
                 time.sleep(1)
             if eth_chain["bid"].price * 0.998 > btc_chain['ask'].price * 1.002:
-                self.deal(sell=self.coin_eth_name, buy=self.coin_btc_name)
+                self.deal(sell=self.coin_eth_usdt_name, buy=self.coin_btc_usdt_name)
                 time.sleep(1)
