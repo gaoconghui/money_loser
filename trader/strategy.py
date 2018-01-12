@@ -56,7 +56,7 @@ class StrategyOne(StrategyBase):
         count = min(from_center(sell)['bid'].count, from_center(buy)['ask'].count)
         earn = (sell_price * 0.998 - buy_price * 1.002) * count
         spend = sell_price * count
-        percent = spend / earn * 100
+        percent = earn / spend * 100
         logger.info(
             "sell {sell} and buy {buy} , {p1} --> {p2} , "
             "count : {count} , earn : {earn} ({percent})".format(sell=sell,
