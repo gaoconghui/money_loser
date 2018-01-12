@@ -4,6 +4,7 @@ import threading
 import time
 
 from data_center import TradeItem, update_center, from_center, is_ready
+from deal import SellLimitOrder, BuyLimitOrder
 
 logger = logging.getLogger(__name__)
 
@@ -18,13 +19,15 @@ class StrategyOne(StrategyBase):
     思路如下：计算当前能直接能通过usdt买btc/eth 买coin所需的usdt成本，同时持有ethcoin以及btccoin，如果一边买入成本低于另一边卖出成本 deal
     """
 
-    def __init__(self, coin_name, huobi_conn):
+    def __init__(self, coin_name, huobi_conn, trader):
         super(StrategyOne, self).__init__()
         self.coin_btc_name = "%sbtc" % coin_name
         self.coin_eth_name = "%seth" % coin_name
 
         self.coin_btc_usdt_name = "%sbtcusdt" % coin_name
         self.coin_eth_usdt_name = "%sethusdt" % coin_name
+
+        self.trader = trader
 
         huobi_conn.subscribe_depth(self.coin_btc_name)
         huobi_conn.subscribe_depth(self.coin_eth_name)
@@ -50,7 +53,7 @@ class StrategyOne(StrategyBase):
                             count=chain_item1['ask'].count)
             return bid, ask
 
-    def deal(self, sell, buy):
+    def deal_debug(self, sell, buy):
         sell_price = from_center(sell)['bid'].price
         buy_price = from_center(buy)['ask'].price
         count = min(from_center(sell)['bid'].count, from_center(buy)['ask'].count)
@@ -67,6 +70,20 @@ class StrategyOne(StrategyBase):
                                                                  earn=earn,
                                                                  percent=str(percent)[:6] + "%"))
 
+    def deal(self, sell, buy):
+        sell_price = from_center(sell)['bid'].price
+        buy_price = from_center(buy)['ask'].price
+        count = min(from_center(sell)['bid'].count, from_center(buy)['ask'].count)
+        sell_item = SellLimitOrder(symbol=sell, price=sell_price, amount=count)
+        buy_item = BuyLimitOrder(symbol=buy, price=buy_price, amount=count)
+        success_sell = self.trader.send_order(sell_item)
+        success_buy = self.trader.send_order(buy_item)
+        logger.info("sell {sell} ({success_sell}), buy {buy} ({success_buy}) , stragety {status}".format(sell=sell_item,
+                                                                                                         buy=buy_item,
+                                                                                                         success_buy=success_buy,
+                                                                                                         success_sell=success_sell,
+                                                                                                         status=success_sell and success_buy))
+
     def run(self):
         while True:
             time.sleep(.1)
@@ -77,8 +94,10 @@ class StrategyOne(StrategyBase):
                 continue
             if is_ready(self.coin_btc_usdt_name) and is_ready(self.coin_eth_usdt_name):
                 if btc_chain["bid"].price * 0.998 > eth_chain['ask'].price * 1.002:
-                    self.deal(sell=self.coin_btc_usdt_name, buy=self.coin_eth_usdt_name)
+                    self.deal_debug(sell=self.coin_btc_usdt_name, buy=self.coin_eth_usdt_name)
+                    self.deal(sell=self.coin_btc_name, buy=self.coin_eth_name)
                     time.sleep(1)
                 if eth_chain["bid"].price * 0.998 > btc_chain['ask'].price * 1.002:
-                    self.deal(sell=self.coin_eth_usdt_name, buy=self.coin_btc_usdt_name)
+                    self.deal_debug(sell=self.coin_eth_usdt_name, buy=self.coin_btc_usdt_name)
+                    self.deal(sell=self.coin_eth_name, buy=self.coin_btc_name)
                     time.sleep(1)

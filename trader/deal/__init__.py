@@ -23,11 +23,11 @@ order_type = {
 # 市价买
 BuyMarketOrder = namedtuple("BUY_MARKET", field_names=["symbol", "amount"])
 # 限价买
-BuyLimitOrder = namedtuple("BUY_MARKET", field_names=["symbol", "price", "amount"])
+BuyLimitOrder = namedtuple("BUY_LIMIT", field_names=["symbol", "price", "amount"])
 # 市价卖
-SellMarketOrder = namedtuple("BUY_MARKET", field_names=["symbol", "amount"])
+SellMarketOrder = namedtuple("SELL_MARKET", field_names=["symbol", "amount"])
 # 限价卖
-SellLimitOrder = namedtuple("BUY_MARKET", field_names=["symbol", "price", "amount"])
+SellLimitOrder = namedtuple("SELL_LIMIT", field_names=["symbol", "price", "amount"])
 
 
 class HuobiTrader(object):
@@ -210,9 +210,38 @@ class HuobiTrader(object):
         return self._api_key_get(params, url)
 
 
+class HuobiDebugTrader(object):
+    # 创建并执行订单
+    def send_order(self, order_item):
+        symbol = order_item.symbol
+        depth = get_depth(symbol)
+        name = order_item.__class__.__name__
+
+        if name == "BUY_LIMIT":
+            want_count = order_item.amount
+            want_price = order_item.price
+            for price, count in depth['tick']['asks']:
+                if price > want_price:
+                    break
+                if count >= want_count:
+                    return True
+                else:
+                    count -= want_count
+            return False
+        if name == "SELL_LIMIT":
+            want_count = order_item.amount
+            want_price = order_item.price
+            for price, count in depth['tick']['bids']:
+                if price < want_price:
+                    break
+                if count >= want_count:
+                    return True
+                else:
+                    count -= want_count
+            return False
+
+
 # 获取KLine
-
-
 def get_kline(symbol, period, size):
     """
     :param symbol
@@ -229,14 +258,14 @@ def get_kline(symbol, period, size):
 
 
 # 获取marketdepth
-def get_depth(symbol, type):
+def get_depth(symbol, depth_type="step0"):
     """
     :param symbol: 
     :param type: 可选值：{ percent10, step0, step1, step2, step3, step4, step5 }
     :return:
     """
     params = {'symbol': symbol,
-              'type': type}
+              'type': depth_type}
 
     url = MARKET_URL + '/market/depth'
     return http_get_request(url, params)
@@ -279,10 +308,12 @@ def get_symbols():
 
 
 if __name__ == '__main__':
-    import time
+    # import time
+    #
+    # trader = HuobiTrader(access_key="", secret_key="")
+    # t1 = time.time()
+    # print trader.get_balance()
+    # t2 = time.time()
+    # print t2 - t1
 
-    trader = HuobiTrader(access_key="",secret_key="")
-    t1 = time.time()
-    print trader.get_balance()
-    t2 = time.time()
-    print t2 - t1
+    print get_depth("tnbbtc")

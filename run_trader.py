@@ -5,6 +5,8 @@ import os
 import sys
 import time
 
+from trader.deal import HuobiDebugTrader
+
 _video_sch_dir = '%s/' % os.path.dirname(os.path.realpath(__file__))
 _filepath = os.path.dirname(sys.argv[0])
 sys.path.insert(1, os.path.join(_filepath, _video_sch_dir))
@@ -48,14 +50,16 @@ def init_log():
     logger = logging.getLogger()
     logger.addHandler(fh)
     logger.addHandler(sh)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
+
 
 
 if __name__ == '__main__':
     init_log()
     huobi = Huobi()
     huobi.start()
-    s = StrategyOne(coin_name="wax", huobi_conn=huobi)
+    trader = HuobiDebugTrader()
+    s = StrategyOne(coin_name="wax", huobi_conn=huobi,trader=trader)
     s.start()
     i = 0
     while True:
