@@ -8,6 +8,7 @@ from collections import namedtuple
 from functools import partial
 
 from huobi_util import *
+from trader.util import ThreadWithReturnValue
 
 '''
 Market data API
@@ -239,6 +240,15 @@ class HuobiDebugTrader(object):
                 else:
                     count -= want_count
             return False
+
+    def send_orders(self, order1, order2):
+        t1 = ThreadWithReturnValue(target=self.send_order, args=(order1,))
+        t2 = ThreadWithReturnValue(target=self.send_order, args=(order2,))
+        t1.start()
+        t2.start()
+        result1 = t1.join()
+        result2 = t2.join()
+        return result1, result2
 
 
 # 获取KLine
