@@ -8,8 +8,8 @@ import threading
 from six import StringIO
 from websocket import create_connection
 
-from data_center import update_center, TradeItem
 import global_setting
+from data_center import update_center, TradeItem
 
 logger = logging.getLogger(__name__)
 
@@ -101,18 +101,11 @@ class Huobi(threading.Thread):
         self.ws.send(json.dumps(pong_content))
 
     def run(self):
-        reconnect_count = 0
         while global_setting.running:
             try:
                 self.parse_receive(self.ws.recv())
             except:
                 import traceback
                 logger.error(traceback.format_exc())
-                if reconnect_count > 5:
-                    global_setting.running = True
-                    break
                 self.reconnect()
-                reconnect_count += 1
         self.ws.close()
-
-
