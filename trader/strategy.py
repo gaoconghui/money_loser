@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 import logging
+import math
 import threading
 import time
 
+import global_setting
 from data_center import TradeItem, update_center, from_center, is_ready
 from deal import SellLimitOrder, BuyLimitOrder
 
@@ -21,6 +23,7 @@ class StrategyOne(StrategyBase):
 
     def __init__(self, coin_name, huobi_conn, trader):
         super(StrategyOne, self).__init__()
+        self.coin_name = coin_name
         self.coin_btc_name = "%sbtc" % coin_name
         self.coin_eth_name = "%seth" % coin_name
 
@@ -53,7 +56,7 @@ class StrategyOne(StrategyBase):
                             count=chain_item1['ask'].count)
             return bid, ask
 
-    def deal_debug(self, sell, buy):
+    def earn_percent(self, sell, buy):
         sell_price = from_center(sell)['bid'].price
         buy_price = from_center(buy)['ask'].price
         count = min(from_center(sell)['bid'].count, from_center(buy)['ask'].count)
@@ -61,7 +64,7 @@ class StrategyOne(StrategyBase):
         spend = sell_price * count
         percent = earn / spend * 100
         logger.info(
-            "sell {sell} and buy {buy} , {p1} --> {p2} , "
+            "may sell {sell} and buy {buy} , {p1} --> {p2} , "
             "count : {count} , earn : {earn} ({percent})".format(sell=sell,
                                                                  buy=buy,
                                                                  p1=sell_price,
@@ -69,14 +72,26 @@ class StrategyOne(StrategyBase):
                                                                  count=count,
                                                                  earn=earn,
                                                                  percent=str(percent)[:6] + "%"))
+        return percent
 
     def deal(self, sell, buy):
         sell_price = from_center(sell)['bid'].price
         buy_price = from_center(buy)['ask'].price
-        count = min(from_center(sell)['bid'].count, from_center(buy)['ask'].count)
+
+        if buy == self.coin_eth_name:
+            buy_max_count = math.floor(self.trader.balance("eth") / buy_price)
+        elif buy == self.coin_btc_name:
+            buy_max_count = math.floor(self.trader.balance("btc") / buy_price)
+        else:
+            logger.error("buy coin name error {b}".format(b=buy))
+            return
+
+        count = min(from_center(sell)['bid'].count, from_center(buy)['ask'].count, self.trader.balance(self.coin_name),
+                    buy_max_count, 500)
         sell_item = SellLimitOrder(symbol=sell, price=sell_price, amount=count)
         buy_item = BuyLimitOrder(symbol=buy, price=buy_price, amount=count)
         success_sell, success_buy = self.trader.send_orders(sell_item, buy_item)
+        global_setting.running = False
         logger.info("sell {sell} ({success_sell}), buy {buy} ({success_buy}) , stragety {status}".format(sell=sell_item,
                                                                                                          buy=buy_item,
                                                                                                          success_buy=success_buy,
@@ -84,7 +99,7 @@ class StrategyOne(StrategyBase):
                                                                                                          status=success_sell and success_buy))
 
     def run(self):
-        while True:
+        while global_setting.running:
             time.sleep(.01)
             self.compute_chain()
             btc_chain = from_center(self.coin_btc_usdt_name)
@@ -93,10 +108,10 @@ class StrategyOne(StrategyBase):
                 continue
             if is_ready(self.coin_btc_usdt_name) and is_ready(self.coin_eth_usdt_name):
                 if btc_chain["bid"].price * 0.998 > eth_chain['ask'].price * 1.002:
-                    self.deal_debug(sell=self.coin_btc_usdt_name, buy=self.coin_eth_usdt_name)
-                    self.deal(sell=self.coin_btc_name, buy=self.coin_eth_name)
-                    time.sleep(.1)
+                    if self.earn_percent(sell=self.coin_btc_usdt_name, buy=self.coin_eth_usdt_name) > 0.1:
+                        self.deal(sell=self.coin_btc_name, buy=self.coin_eth_name)
+                        time.sleep(.1)
                 if eth_chain["bid"].price * 0.998 > btc_chain['ask'].price * 1.002:
-                    self.deal_debug(sell=self.coin_eth_usdt_name, buy=self.coin_btc_usdt_name)
-                    self.deal(sell=self.coin_eth_name, buy=self.coin_btc_name)
-                    time.sleep(.1)
+                    if self.earn_percent(sell=self.coin_eth_usdt_name, buy=self.coin_btc_usdt_name) > 0.1:
+                        self.deal(sell=self.coin_eth_name, buy=self.coin_btc_name)
+                        time.sleep(.1)

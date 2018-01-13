@@ -1,11 +1,14 @@
+# -*- coding: utf-8 -*-
 import json
 import logging
 import logging.handlers
-import os
 import sys
 import time
 
-from trader.deal import HuobiDebugTrader
+import os
+
+from trader import password, global_setting
+from trader.deal import HuobiTrader
 
 _video_sch_dir = '%s/' % os.path.dirname(os.path.realpath(__file__))
 _filepath = os.path.dirname(sys.argv[0])
@@ -53,20 +56,21 @@ def init_log():
     logger.setLevel(logging.INFO)
 
 
-
 if __name__ == '__main__':
     init_log()
+    # 火币网数据获取
     huobi = Huobi()
     huobi.start()
-    trader = HuobiDebugTrader()
-    s = StrategyOne(coin_name="wax", huobi_conn=huobi,trader=trader)
-    s.start()
+    trader = HuobiTrader(access_key=password.access_key, secret_key=password.secret_key)
+    for coin in ["swftc"]:
+        s = StrategyOne(coin_name=coin, huobi_conn=huobi, trader=trader)
+        s.start()
     i = 0
-    while True:
+    while global_setting.running:
         i += 1
         time.sleep(1)
         if i % 10 == 0:
             logger.info("heartbeat {t}".format(t=time.ctime()))
-            logger.info(from_center("waxbtcusdt"))
-            logger.info(from_center("waxethusdt"))
+            logger.info(from_center("swftcbtcusdt"))
+            logger.info(from_center("swftcethusdt"))
         dump()

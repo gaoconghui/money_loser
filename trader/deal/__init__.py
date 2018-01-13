@@ -5,9 +5,9 @@ import hashlib
 import hmac
 import urlparse
 from collections import namedtuple
-from functools import partial
 
 from huobi_util import *
+from trader import global_setting, password
 from trader.util import ThreadWithReturnValue
 
 '''
@@ -31,7 +31,7 @@ SellMarketOrder = namedtuple("SELL_MARKET", field_names=["symbol", "amount"])
 SellLimitOrder = namedtuple("SELL_LIMIT", field_names=["symbol", "price", "amount"])
 
 
-class HuobiTrader(object):
+class HuobiApi(object):
     def __init__(self, access_key, secret_key):
         self.access_key = access_key
         self.secret_key = secret_key
@@ -114,9 +114,8 @@ class HuobiTrader(object):
             params["price"] = order_item.price
 
         url = '/v1/order/orders/place'
-        return self._api_key_post(params, url)
-
-    sell_limit = partial(send_order, _type="sell_limit")
+        result = self._api_key_post(params, url)
+        return result.get("data")
 
     # 撤销订单
     def cancel_order(self, order_id):
@@ -126,6 +125,13 @@ class HuobiTrader(object):
         """
         params = {}
         url = "/v1/order/orders/{0}/submitcancel".format(order_id)
+        return self._api_key_post(params, url)
+
+    def cancel_orders(self, order_ids):
+        params = {
+            "order-ids": order_ids
+        }
+        url = "/v1/order/orders/batchcancel"
         return self._api_key_post(params, url)
 
     # 查询某个订单
@@ -209,6 +215,42 @@ class HuobiTrader(object):
             params['size'] = size
         url = '/v1/order/matchresults'
         return self._api_key_get(params, url)
+
+
+class HuobiTrader(HuobiApi):
+    def __init__(self, access_key, secret_key):
+        super(HuobiTrader, self).__init__(access_key, secret_key)
+        self._balance = {}
+        self.retry_update_balance()
+
+    def retry_update_balance(self):
+        for i in range(3):
+            result = self.get_balance()
+            if result.get("status") == "ok":
+                self._balance = {item['currency']: item['balance'] for item in result['data']['list'] if
+                                 item.get("type") == "trade"}
+                return self._balance
+        global_setting.running = False
+
+    def balance(self, coin):
+        return float(self._balance.get(coin, 0))
+
+    def send_orders(self, order1, order2):
+        t1 = ThreadWithReturnValue(target=self.send_order, args=(order1,))
+        t2 = ThreadWithReturnValue(target=self.send_order, args=(order2,))
+        t1.start()
+        t2.start()
+        order_id1 = t1.join()
+        order_id2 = t2.join()
+        result = self.cancel_orders([order_id1,order_id2])
+        print result
+        order_success_map = {}
+        for item in result.get('data',{}).get('failed',[]):
+            order_success_map[item['order-id']] = True
+        for item in result.get('data',{}).get('success',[]):
+            order_success_map[item] = False
+        self.retry_update_balance()
+        return order_success_map.get(order_id1), order_success_map.get(order_id2)
 
 
 class HuobiDebugTrader(object):
@@ -320,10 +362,18 @@ def get_symbols():
 if __name__ == '__main__':
     # import time
     #
-    # trader = HuobiTrader(access_key="", secret_key="")
+    trader = HuobiTrader(access_key=password.access_key, secret_key=password.secret_key)
     # t1 = time.time()
     # print trader.get_balance()
     # t2 = time.time()
     # print t2 - t1
-
-    print get_depth("tnbbtc")
+    # print float(trader.balance("swftc"))
+    # print type(float(trader.balance("swftc")))
+    result = trader.cancel_orders(["670090655"])
+    order_success_map = {}
+    for item in result['data']['failed']:
+        order_success_map[item['order-id']] = True
+    for item in result['data']['success']:
+        order_success_map[item['order-id']] = False
+    print order_success_map
+    # print get_depth("tnbbtc")
