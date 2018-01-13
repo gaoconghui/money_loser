@@ -85,7 +85,7 @@ class StrategyOne(StrategyBase):
 
     def run(self):
         while True:
-            time.sleep(.1)
+            time.sleep(.01)
             self.compute_chain()
             btc_chain = from_center(self.coin_btc_usdt_name)
             eth_chain = from_center(self.coin_eth_usdt_name)
@@ -95,8 +95,8 @@ class StrategyOne(StrategyBase):
                 if btc_chain["bid"].price * 0.998 > eth_chain['ask'].price * 1.002:
                     self.deal_debug(sell=self.coin_btc_usdt_name, buy=self.coin_eth_usdt_name)
                     self.deal(sell=self.coin_btc_name, buy=self.coin_eth_name)
-                    time.sleep(1)
+                    time.sleep(.1)
                 if eth_chain["bid"].price * 0.998 > btc_chain['ask'].price * 1.002:
                     self.deal_debug(sell=self.coin_eth_usdt_name, buy=self.coin_btc_usdt_name)
                     self.deal(sell=self.coin_eth_name, buy=self.coin_btc_name)
-                    time.sleep(1)
+                    time.sleep(.1)
