@@ -88,6 +88,8 @@ class StrategyOne(StrategyBase):
 
         count = min(from_center(sell)['bid'].count, from_center(buy)['ask'].count, self.trader.balance(self.coin_name),
                     buy_max_count, 500)
+        if count < 1:
+            return
         sell_item = SellLimitOrder(symbol=sell, price=sell_price, amount=count)
         buy_item = BuyLimitOrder(symbol=buy, price=buy_price, amount=count)
         success_sell, success_buy = self.trader.send_orders(sell_item, buy_item)
