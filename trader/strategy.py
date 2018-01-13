@@ -91,7 +91,6 @@ class StrategyOne(StrategyBase):
         sell_item = SellLimitOrder(symbol=sell, price=sell_price, amount=count)
         buy_item = BuyLimitOrder(symbol=buy, price=buy_price, amount=count)
         success_sell, success_buy = self.trader.send_orders(sell_item, buy_item)
-        global_setting.running = False
         logger.info("sell {sell} ({success_sell}), buy {buy} ({success_buy}) , stragety {status}".format(sell=sell_item,
                                                                                                          buy=buy_item,
                                                                                                          success_buy=success_buy,

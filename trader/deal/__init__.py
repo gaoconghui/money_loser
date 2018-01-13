@@ -4,6 +4,7 @@ import datetime
 import hashlib
 import hmac
 import urlparse
+import logging
 from collections import namedtuple
 
 from huobi_util import *
@@ -13,6 +14,8 @@ from trader.util import ThreadWithReturnValue
 '''
 Market data API
 '''
+
+logger = logging.getLogger(__name__)
 
 order_type = {
     "BUY_MARKET": "buy-market",
@@ -242,13 +245,16 @@ class HuobiTrader(HuobiApi):
         t2.start()
         order_id1 = t1.join()
         order_id2 = t2.join()
-        result = self.cancel_orders([order_id1,order_id2])
-        print result
-        order_success_map = {}
-        for item in result.get('data',{}).get('failed',[]):
-            order_success_map[item['order-id']] = True
-        for item in result.get('data',{}).get('success',[]):
-            order_success_map[item] = False
+        try:
+            result = self.cancel_orders([order_id1,order_id2])
+            order_success_map = {}
+            for item in result.get('data',{}).get('failed',[]):
+                order_success_map[item['order-id']] = True
+            for item in result.get('data',{}).get('success',[]):
+                order_success_map[item] = False
+        except:
+            logger.info("cancel orders error , {o1}  {o2}".format(o1=order_id1,o2=order_id2))
+            return False,False
         self.retry_update_balance()
         return order_success_map.get(order_id1), order_success_map.get(order_id2)
 
