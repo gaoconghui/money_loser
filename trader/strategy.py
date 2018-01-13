@@ -89,6 +89,7 @@ class StrategyOne(StrategyBase):
         count = min(from_center(sell)['bid'].count, from_center(buy)['ask'].count, self.trader.balance(self.coin_name),
                     buy_max_count, 500)
         if count < 1:
+            logger.info("count (c) < 1 ".format(c=count))
             return
         sell_item = SellLimitOrder(symbol=sell, price=sell_price, amount=count)
         buy_item = BuyLimitOrder(symbol=buy, price=buy_price, amount=count)
@@ -101,7 +102,7 @@ class StrategyOne(StrategyBase):
 
     def run(self):
         while global_setting.running:
-            time.sleep(.01)
+            # time.sleep(.01)
             self.compute_chain()
             btc_chain = from_center(self.coin_btc_usdt_name)
             eth_chain = from_center(self.coin_eth_usdt_name)
@@ -109,10 +110,10 @@ class StrategyOne(StrategyBase):
                 continue
             if is_ready(self.coin_btc_usdt_name) and is_ready(self.coin_eth_usdt_name):
                 if btc_chain["bid"].price * 0.998 > eth_chain['ask'].price * 1.002:
-                    if self.earn_percent(sell=self.coin_btc_usdt_name, buy=self.coin_eth_usdt_name) > 0.1:
+                    if self.earn_percent(sell=self.coin_btc_usdt_name, buy=self.coin_eth_usdt_name) > 0.01:
                         self.deal(sell=self.coin_btc_name, buy=self.coin_eth_name)
-                        time.sleep(.1)
+                    time.sleep(.1)
                 if eth_chain["bid"].price * 0.998 > btc_chain['ask'].price * 1.002:
-                    if self.earn_percent(sell=self.coin_eth_usdt_name, buy=self.coin_btc_usdt_name) > 0.1:
+                    if self.earn_percent(sell=self.coin_eth_usdt_name, buy=self.coin_btc_usdt_name) > 0.01:
                         self.deal(sell=self.coin_eth_name, buy=self.coin_btc_name)
-                        time.sleep(.1)
+                    time.sleep(.1)
