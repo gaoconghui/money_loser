@@ -4,6 +4,7 @@ import gzip
 import json
 import logging
 import threading
+import time
 
 from six import StringIO
 from websocket import create_connection
@@ -88,7 +89,6 @@ class Huobi(threading.Thread):
         symbol = self.parse_symbol(item.get("ch"))
         bids = item['tick']['bids'][:1]
         asks = item['tick']['asks'][:1]
-
         update_center(symbol=symbol,
                       bid=TradeItem(bids[-1][0], sum([b[1] for b in bids])),
                       ask=TradeItem(asks[-1][0], sum([a[1] for a in asks])))
@@ -97,6 +97,7 @@ class Huobi(threading.Thread):
         return ch.split(".")[1]
 
     def pong(self, ts):
+        logger.debug("pong delay {t}".format(t=time.time() * 1000 - ts))
         pong_content = {"pong": ts}
         self.ws.send(json.dumps(pong_content))
 
@@ -109,3 +110,9 @@ class Huobi(threading.Thread):
                 logger.error(traceback.format_exc())
                 self.reconnect()
         self.ws.close()
+
+
+if __name__ == '__main__':
+    huobi = Huobi()
+    huobi.subscribe_depth("waxbtc")
+    huobi.start()
