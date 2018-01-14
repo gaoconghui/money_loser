@@ -6,7 +6,7 @@ import urllib
 import requests
 
 # timeout in 5 seconds:
-TIMEOUT = 5
+TIMEOUT = 3
 
 API_HOST = "api.huobi.pro"
 
