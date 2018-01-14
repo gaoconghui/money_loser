@@ -88,6 +88,7 @@ class StrategyOne(StrategyBase):
 
         count = min(from_center(sell)['bid'].count, from_center(buy)['ask'].count, self.trader.balance(self.coin_name),
                     buy_max_count, 500)
+        count = int(count)
         if count < 1:
             logger.info("count (c) < 1 ".format(c=count))
             return
@@ -102,7 +103,7 @@ class StrategyOne(StrategyBase):
 
     def run(self):
         while global_setting.running:
-            # time.sleep(.01)
+            time.sleep(.001)
             self.compute_chain()
             btc_chain = from_center(self.coin_btc_usdt_name)
             eth_chain = from_center(self.coin_eth_usdt_name)
