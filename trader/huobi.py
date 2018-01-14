@@ -45,7 +45,7 @@ def gunziptxt(data):
 class Huobi(threading.Thread):
     def __init__(self):
         super(Huobi, self).__init__()
-        self.ws = create_connection("wss://api.huobipro.com/ws")
+        self.ws = create_connection("wss://api.huobi.pro/ws")
         self.running = True
         self.subscribe_list = []
         self.depth_subs = set()
