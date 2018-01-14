@@ -43,7 +43,7 @@ def init_log():
     sh.setLevel(logging.DEBUG)
 
     # create formatter
-    fmt = "%(levelname)s %(asctime)-15s %(filename)s %(message)s"
+    fmt = "%(asctime)s.%(msecs)03d %(filename)s %(message)s"
     datefmt = "%a %d %b %Y %H:%M:%S"
     formatter = logging.Formatter(fmt, datefmt)
 
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     huobi = Huobi()
     huobi.start()
     trader = HuobiTrader(access_key=password.access_key, secret_key=password.secret_key)
-    for coin in ["swftc"]:
+    for coin in ["swftc", "wax"]:
         s = StrategyOne(coin_name=coin, huobi_conn=huobi, trader=trader)
         s.start()
     i = 0

@@ -1,4 +1,9 @@
+from functools import wraps
 from threading import Thread
+import logging
+import time
+
+logger = logging.getLogger(__name__)
 
 
 class ThreadWithReturnValue(Thread):
@@ -13,3 +18,18 @@ class ThreadWithReturnValue(Thread):
     def join(self):
         Thread.join(self)
         return self._return
+
+
+def timeme(func):
+    @wraps(func)
+    def inner(*args,**kwargs):
+        t1 = time.time()
+        result = func(*args,**kwargs)
+        logger.info("{f} spend {s}".format(f=func.__name__,s=time.time() - t1))
+        return result
+    return inner
+
+if __name__ == '__main__':
+    @timeme
+    def f():
+        time.sleep(1)

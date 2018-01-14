@@ -9,7 +9,7 @@ from collections import namedtuple
 
 from huobi_util import *
 from trader import global_setting, password
-from trader.util import ThreadWithReturnValue
+from trader.util import ThreadWithReturnValue, timeme
 
 '''
 Market data API
@@ -100,6 +100,7 @@ class HuobiApi(object):
         return self._api_key_get(params, url)
 
     # 创建并执行订单
+    @timeme
     def send_order(self, order_item):
         """
         :param amount: 限价单表示下单数量，市价买单时表示买多少钱，市价卖单时表示卖多少币
