@@ -8,6 +8,7 @@ import os
 
 from trader import password
 from trader.deal import HuobiTrader
+from trader.huobi import Huobi
 
 _video_sch_dir = '%s/' % os.path.dirname(os.path.realpath(__file__))
 _filepath = os.path.dirname(sys.argv[0])
@@ -44,7 +45,22 @@ if __name__ == '__main__':
     init_log()
     # 火币网数据获取
     trader = HuobiTrader(access_key=password.access_key, secret_key=password.secret_key)
+    logger.info("start test trader banalce test")
+    logger.info("----------------------------------------------")
     for i in range(10):
         t1 = time.time()
         trader.get_balance()
         logger.info("test trader get balalce time {t}".format(t=time.time() - t1))
+    logger.info("----------------------------------------------")
+    logger.info("test huobi websocket")
+    huobi = Huobi()
+
+
+    def parse_depth_recv(item):
+        logger.info("time delay {t}".format(t=time.time() * 1000 - item.get("ts")))
+
+
+    huobi.parse_depth_recv = parse_depth_recv
+    huobi.subscribe_depth("waxbtc")
+    huobi.subscribe_depth("waxeth")
+    huobi.start()
