@@ -89,9 +89,14 @@ class Huobi(threading.Thread):
         symbol = self.parse_symbol(item.get("ch"))
         bids = item['tick']['bids'][:1]
         asks = item['tick']['asks'][:1]
-        update_center(symbol=symbol,
-                      bid=TradeItem(bids[-1][0], sum([b[1] for b in bids])),
-                      ask=TradeItem(asks[-1][0], sum([a[1] for a in asks])))
+        try:
+            update_center(symbol=symbol,
+                          bid=TradeItem(bids[-1][0], sum([b[1] for b in bids])),
+                          ask=TradeItem(asks[-1][0], sum([a[1] for a in asks])))
+        except:
+            # 这边碰到过一种极端情况，市场上所有卖单都被秒了
+            time.sleep(1)
+            logger.error("parse depth error {item}".format(item=json.dumps(item)))
 
     def parse_symbol(self, ch):
         return ch.split(".")[1]
