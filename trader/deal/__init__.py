@@ -119,6 +119,8 @@ class HuobiApi(object):
 
         url = '/v1/order/orders/place'
         result = self._api_key_post(params, url)
+        if result.get("status","") != "ok":
+            logger.error("send order error , {s}".format(s=json.dumps(result)))
         return result.get("data")
 
     # 撤销订单
@@ -370,17 +372,3 @@ if __name__ == '__main__':
     # import time
     #
     trader = HuobiTrader(access_key=password.access_key, secret_key=password.secret_key)
-    # t1 = time.time()
-    # print trader.get_balance()
-    # t2 = time.time()
-    # print t2 - t1
-    # print float(trader.balance("swftc"))
-    # print type(float(trader.balance("swftc")))
-    result = trader.cancel_orders(["670090655"])
-    order_success_map = {}
-    for item in result['data']['failed']:
-        order_success_map[item['order-id']] = True
-    for item in result['data']['success']:
-        order_success_map[item['order-id']] = False
-    print order_success_map
-    # print get_depth("tnbbtc")
