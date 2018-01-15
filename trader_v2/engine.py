@@ -8,7 +8,7 @@ from Queue import Queue, Empty
 from collections import defaultdict
 from threading import Thread
 
-from trader_v2.deal import HuobiDealer
+from trader_v2.deal import HuobiDealer, HuobiDebugDealer
 from trader_v2.event import EVENT_TIMER, Event, EVENT_HEARTBEAT
 from trader_v2.stragety import StrategyOne
 from trader_v2.trader import Huobi
@@ -169,7 +169,7 @@ class MainEngine(object):
         self.strategies.append(strategy)
 
     def start_dealers(self):
-        dealer = HuobiDealer(self.event_engine)
+        dealer = HuobiDebugDealer(self.event_engine)
         dealer.start()
         self.dealers.append(dealer)
 

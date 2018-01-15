@@ -3,8 +3,6 @@
 # -*- coding: utf-8 -*-
 import logging
 
-import time
-
 from trader_v2.event import Event, EVENT_SUBSCRIBE_DEPTH, EVENT_HUOBI_DEPTH_PRE, \
     EVENT_HUOBI_SEND_ORDERS
 from trader_v2.trader_object import TradeItem, SellLimitOrder, BuyLimitOrder
@@ -55,6 +53,10 @@ class StrategyOne(StrategyBase):
         self.eth_chain_trade_bid = None
         self.eth_chain_trade_ask = None
 
+        # 是否允许发单
+        # 如果上一个订单还没返回 ，则不允许再次发送
+        self.can_send_orders = True
+
     def start(self):
         self.subscribe_depth(self.coin_btc_name)
         self.subscribe_depth(self.coin_eth_name)
@@ -67,10 +69,6 @@ class StrategyOne(StrategyBase):
         self.depth_map[depth_item.symbol] = depth_item
         self.compute_chain()
         self.check()
-        if "wax" in depth_item.symbol:
-            print "delay",time.time() * 1000 - depth_item.timestamp
-            print "sub",depth_item.timestamp - self.last_time
-            self.last_time = depth_item.timestamp
 
     def is_ready(self, symbol):
         return symbol in self.depth_map
@@ -94,13 +92,16 @@ class StrategyOne(StrategyBase):
 
     def check(self):
         if self.btc_chain_trade_bid and self.eth_chain_trade_ask:
-            if self.btc_chain_trade_bid.price * 0.998 > self.eth_chain_trade_ask.price * 1.002:
+            if self.btc_chain_trade_bid.price * 1.998 > self.eth_chain_trade_ask.price * 1.002:
                 self.deal(self.coin_eth_name, self.coin_btc_name)
         if self.btc_chain_trade_ask and self.eth_chain_trade_bid:
-            if self.eth_chain_trade_bid.price * 0.998 > self.btc_chain_trade_ask.price * 1.002:
+            if self.eth_chain_trade_bid.price * 1.998 > self.btc_chain_trade_ask.price * 1.002:
                 self.deal(self.coin_btc_name, self.coin_eth_name)
 
     def deal(self, sell, buy):
+        if not self.can_send_orders:
+            return
+        print 'deal'
         sell_price = self.depth_map[sell].bids[0].price
         buy_price = self.depth_map[buy].asks[0].price
 
@@ -123,8 +124,11 @@ class StrategyOne(StrategyBase):
         event = Event(EVENT_HUOBI_SEND_ORDERS)
         event.dict_ = {"data": [sell_item, buy_item], "callback": self.on_send_orders}
         self.event_engine.put(event)
+        self.can_send_orders = False
 
-    def on_send_orders(self, orders, result):
+    def on_send_orders(self, event, result):
+        self.can_send_orders = True
+        orders = event.dict_['data']
         success_sell, success_buy = result
         logger.info("sell {sell} ({success_sell}), buy {buy} ({success_buy}) , stragety {status}".format(sell=orders[0],
                                                                                                          buy=orders[1],
