@@ -13,7 +13,7 @@ from trader_v2.api import HuobiApi
 from trader_v2.event import EVENT_HUOBI_SEND_CANCEL_ORDERS, EVENT_HUOBI_BALANCE, Event
 from trader_v2.util import ThreadWithReturnValue
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("trader.huobi")
 
 
 class Trader(object):

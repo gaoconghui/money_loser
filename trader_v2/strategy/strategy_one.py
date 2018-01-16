@@ -1,46 +1,29 @@
 # -*- coding: utf-8 -*-
-
-# -*- coding: utf-8 -*-
+"""
+一号策略
+三方套利，思路如下：计算当前能直接能通过usdt买btc/eth 买coin所需的usdt成本，同时持有ethcoin以及btccoin，如果一边买入成本低于另一边卖出成本 deal
+"""
 import logging
 
-from trader_v2.event import Event, EVENT_SUBSCRIBE_DEPTH, EVENT_HUOBI_DEPTH_PRE, EVENT_HUOBI_SEND_CANCEL_ORDERS
+from trader_v2.event import Event, EVENT_HUOBI_SEND_CANCEL_ORDERS
+from trader_v2.strategy import StrategyBase
 from trader_v2.trader_object import TradeItem, SellLimitOrder, BuyLimitOrder
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("strategy.strategy_one")
 
-
-class StrategyBase(object):
-    def __init__(self, event_engine):
-        self.event_engine = event_engine
-
-    def start(self):
-        logger.info("start strategy {name}".format(name=self.__name__))
-
-    def subscribe_depth(self, symbol):
-        event = Event(EVENT_SUBSCRIBE_DEPTH)
-        event.dict_ = {"data": symbol}
-        self.event_engine.put(event)
-        self.event_engine.register(EVENT_HUOBI_DEPTH_PRE + symbol, self._on_depth)
-
-    def _on_depth(self, event):
-        depth_item = event.dict_['data']
-        self.on_depth(depth_item)
-
-    def on_depth(self, depth_item):
-        pass
-
-    def stop(self):
-        logger.info("close strategy {name}".format(name=self.__name__))
 
 class StrategyOne(StrategyBase):
     """
     一号策略
-    思路如下：计算当前能直接能通过usdt买btc/eth 买coin所需的usdt成本，同时持有ethcoin以及btccoin，如果一边买入成本低于另一边卖出成本 deal
     """
 
     __name__ = "strategy one"
 
     def __init__(self, event_engine, coin_name):
+        """
+        :param event_engine: 事件驱动引擎
+        :param coin_name: 
+        """
         super(StrategyOne, self).__init__(event_engine)
         self.coin_name = coin_name
         self.coin_btc_name = "%sbtc" % coin_name

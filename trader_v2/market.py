@@ -15,7 +15,7 @@ from websocket import create_connection
 from trader_v2.event import Event, EVENT_HUOBI_DEPTH_PRE, EVENT_SUBSCRIBE_DEPTH
 from trader_v2.trader_object import MarketDepth, TradeItem
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("market.huobi")
 
 
 def gunziptxt(data):

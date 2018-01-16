@@ -26,7 +26,7 @@ def init_log():
     sh.setLevel(logging.DEBUG)
 
     # create formatter
-    fmt = "%(levelname)s %(asctime)s.%(msecs)03d %(filename)s %(message)s"
+    fmt = "%(levelname)s %(asctime)s.%(msecs)03d %(name)s %(message)s"
     datefmt = "%a %d %b %Y %H:%M:%S"
     formatter = logging.Formatter(fmt, datefmt)
 

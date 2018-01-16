@@ -3,7 +3,6 @@
 主引擎
 """
 import logging
-import threading
 import time
 from Queue import Queue, Empty
 from collections import defaultdict
@@ -11,8 +10,10 @@ from threading import Thread
 
 from trader_v2.event import EVENT_TIMER, Event, EVENT_HEARTBEAT
 from trader_v2.market import HuobiMarket
-from trader_v2.stragety import StrategyOne
+from trader_v2.strategy.strategy_one import StrategyOne
 from trader_v2.trader import HuobiDebugTrader
+
+logger = logging.getLogger("engine")
 
 
 class EventEngine(object):
@@ -116,9 +117,6 @@ class EventEngine(object):
             self.__general_handlers.remove(handler)
 
 
-logger = logging.getLogger(__name__)
-
-
 class HeartBeat(object):
     """
     引擎健康状态监控
@@ -149,7 +147,6 @@ class HeartBeat(object):
             now = time.time() * 1000
             delay = now - heartbeat
             logger.debug("heartbeat delay {t}".format(t=delay))
-            print threading.enumerate()
 
     def run(self):
         while self.running:
