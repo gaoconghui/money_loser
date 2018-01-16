@@ -3,15 +3,16 @@
 主引擎
 """
 import logging
+import threading
 import time
 from Queue import Queue, Empty
 from collections import defaultdict
 from threading import Thread
 
-from trader_v2.deal import HuobiDealer, HuobiDebugDealer
 from trader_v2.event import EVENT_TIMER, Event, EVENT_HEARTBEAT
+from trader_v2.market import HuobiMarket
 from trader_v2.stragety import StrategyOne
-from trader_v2.trader import Huobi
+from trader_v2.trader import HuobiDebugTrader
 
 
 class EventEngine(object):
@@ -124,62 +125,87 @@ class HeartBeat(Thread):
     定时发送监控，如果没有及时返回，引擎故障
     """
 
-    def __init__(self, event_engine):
+    def __init__(self, event_engine, max_delay=1000, close_func=None):
+        """
+        :param event_engine: 监控的事件驱动引擎
+        :param max_delay: 允许的最大延迟
+        :param close_func: 超过最大延迟时，所需要执行的关闭操作
+        """
         super(HeartBeat, self).__init__()
         self.engine = event_engine
+        self.heart_send_count = 0
+        self.heart_receive_count = 0
+        self.close_func = close_func
+        self.max_delay = max_delay
         event_engine.register(EVENT_HEARTBEAT, self.callback)
 
     def callback(self, event):
-        heartbeat = event.dict_['data']
-        now = time.time() * 1000
-        delay = now - heartbeat
-        logger.debug("heartbeat delay {t}".format(t=delay))
-        if now - heartbeat > 1000:
-            logger.error("event engine error , delay gt 1 , {t}".format(t=delay))
-            self.engine.stop()
+        self.heart_receive_count += 1
+        # 每十秒报告一次状况
+        if self.heart_receive_count % max(1, int((10 * 1000.0 / self.max_delay))) == 0:
+            heartbeat = event.dict_['data']
+            now = time.time() * 1000
+            delay = now - heartbeat
+            logger.debug("heartbeat delay {t}".format(t=delay))
 
     def run(self):
         while True:
+            if self.heart_send_count != self.heart_receive_count:
+                logger.error(
+                    "event engine error , send heart {c1} , receive count {c2}".format(c1=self.heart_send_count,
+                                                                                       c2=self.heart_receive_count))
+                if self.close_func:
+                    self.close_func()
+                break
             event = Event(EVENT_HEARTBEAT)
             event.dict_ = {"data": time.time() * 1000}
             self.engine.put(event)
-            time.sleep(1)
+            self.heart_send_count += 1
+            time.sleep(self.max_delay / 1000.0)
 
 
 class MainEngine(object):
     def __init__(self):
         self.event_engine = EventEngine()
-        self.event_engine.start()
+        self.markets = []
         self.traders = []
-        self.start_traders()
-        self.dealers = []
-        self.start_dealers()
         self.strategies = []
-        self.start_strategies()
-        self.start_heartbeat()
 
-    def start_traders(self):
-        huobi_trader = Huobi(self.event_engine)
-        huobi_trader.start()
-        self.traders.append(huobi_trader)
+    def start_markets(self):
+        huobi_market = HuobiMarket(self.event_engine)
+        huobi_market.start()
+        self.markets.append(huobi_market)
 
     def start_strategies(self):
         strategy = StrategyOne(self.event_engine, "wax")
         strategy.start()
         self.strategies.append(strategy)
 
-    def start_dealers(self):
-        dealer = HuobiDebugDealer(self.event_engine)
+    def start_traders(self):
+        dealer = HuobiDebugTrader(self.event_engine)
         dealer.start()
-        self.dealers.append(dealer)
+        self.traders.append(dealer)
 
     def start_heartbeat(self):
-        HeartBeat(event_engine=self.event_engine).run()
+        HeartBeat(event_engine=self.event_engine, max_delay=200, close_func=self.stop).run()
+
+    def start(self):
+        # 顺序不能变 先启动事件驱动引擎，然后详情获取，交易系统，最后启动策略系统
+        self.event_engine.start()
+        self.start_markets()
+        self.start_traders()
+        self.start_strategies()
+        self.start_heartbeat()
 
     def stop(self):
+        for strategy in self.strategies:
+            strategy.stop()
         for trader in self.traders:
-            trader.close()
+            trader.stop()
+        for market in self.markets:
+            market.stop()
         self.event_engine.stop()
+        print threading.enumerate()
 
 
 if __name__ == '__main__':
@@ -197,7 +223,7 @@ if __name__ == '__main__':
         sh.setLevel(logging.DEBUG)
 
         # create formatter
-        fmt = "%(asctime)s.%(msecs)03d %(filename)s %(message)s"
+        fmt = "%(levelname)s %(asctime)s.%(msecs)03d %(filename)s %(message)s"
         datefmt = "%a %d %b %Y %H:%M:%S"
         formatter = logging.Formatter(fmt, datefmt)
 
@@ -207,8 +233,9 @@ if __name__ == '__main__':
         logger = logging.getLogger()
         logger.addHandler(fh)
         logger.addHandler(sh)
-        logger.setLevel(logging.INFO)
+        logger.setLevel(logging.DEBUG)
 
 
     init_log()
     engine = MainEngine()
+    engine.start()

@@ -6,4 +6,5 @@ dist
 *.egg-info
 *.log
 password.py
+secret_config.py
 
