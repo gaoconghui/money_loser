@@ -2,8 +2,9 @@
 
 import time
 
-from event import Event, EVENT_TIMER
+from event import Event, EVENT_TIMER, EVENT_HUOBI_MARKET_DETAIL_PRE
 from trader_v2.engine import EventEngine
+from trader_v2.market import HuobiMarket
 
 
 def t():
@@ -35,6 +36,19 @@ def t():
     ee.put(event)
 
 
+def market_test():
+    engine = EventEngine()
+    engine.start()
+    market = HuobiMarket(engine)
+    market.subscribe_trade_detail("btcusdt")
+    market.start()
+
+    type_ = EVENT_HUOBI_MARKET_DETAIL_PRE + "btcusdt"
+    def fun(event):
+        print event.dict_
+    engine.register(type_,fun)
+
+
 # 直接运行脚本可以进行测试
 if __name__ == '__main__':
-    t()
+    market_test()

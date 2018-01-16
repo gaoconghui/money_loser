@@ -14,7 +14,7 @@ class StrategyBase(object):
         logger.info("start strategy {name}".format(name=self.__name__))
 
     def subscribe_depth(self, symbol):
-        event = Event(EVENT_SUBSCRIBE_DEPTH)
+        event = Event(EVENT_HUOBI_SUBSCRIBE_DEPTH)
         event.dict_ = {"data": symbol}
         self.event_engine.put(event)
         self.event_engine.register(EVENT_HUOBI_DEPTH_PRE + symbol, self._on_depth)
