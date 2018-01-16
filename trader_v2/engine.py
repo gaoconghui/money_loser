@@ -119,7 +119,7 @@ class EventEngine(object):
 logger = logging.getLogger(__name__)
 
 
-class HeartBeat(Thread):
+class HeartBeat(object):
     """
     引擎健康状态监控
     定时发送监控，如果没有及时返回，引擎故障
@@ -137,19 +137,22 @@ class HeartBeat(Thread):
         self.heart_receive_count = 0
         self.close_func = close_func
         self.max_delay = max_delay
+        self.running = True
         event_engine.register(EVENT_HEARTBEAT, self.callback)
+        self.__inner_thread = Thread(target=self.run)
 
     def callback(self, event):
         self.heart_receive_count += 1
         # 每十秒报告一次状况
-        if self.heart_receive_count % max(1, int((10 * 1000.0 / self.max_delay))) == 0:
+        if self.heart_receive_count % max(1, int((2 * 1000.0 / self.max_delay))) == 0:
             heartbeat = event.dict_['data']
             now = time.time() * 1000
             delay = now - heartbeat
             logger.debug("heartbeat delay {t}".format(t=delay))
+            print threading.enumerate()
 
     def run(self):
-        while True:
+        while self.running:
             if self.heart_send_count != self.heart_receive_count:
                 logger.error(
                     "event engine error , send heart {c1} , receive count {c2}".format(c1=self.heart_send_count,
@@ -163,6 +166,13 @@ class HeartBeat(Thread):
             self.heart_send_count += 1
             time.sleep(self.max_delay / 1000.0)
 
+    def start(self):
+        self.__inner_thread.start()
+
+    def stop(self):
+        logger.info("heartbeat close")
+        self.running = False
+
 
 class MainEngine(object):
     def __init__(self):
@@ -170,6 +180,8 @@ class MainEngine(object):
         self.markets = []
         self.traders = []
         self.strategies = []
+        self.heartbeat = HeartBeat(event_engine=self.event_engine, max_delay=200, close_func=self.stop)
+        self.running = True
 
     def start_markets(self):
         huobi_market = HuobiMarket(self.event_engine)
@@ -187,7 +199,7 @@ class MainEngine(object):
         self.traders.append(dealer)
 
     def start_heartbeat(self):
-        HeartBeat(event_engine=self.event_engine, max_delay=200, close_func=self.stop).run()
+        self.heartbeat.start()
 
     def start(self):
         # 顺序不能变 先启动事件驱动引擎，然后详情获取，交易系统，最后启动策略系统
@@ -198,6 +210,7 @@ class MainEngine(object):
         self.start_heartbeat()
 
     def stop(self):
+        self.heartbeat.stop()
         for strategy in self.strategies:
             strategy.stop()
         for trader in self.traders:
@@ -205,37 +218,4 @@ class MainEngine(object):
         for market in self.markets:
             market.stop()
         self.event_engine.stop()
-        print threading.enumerate()
-
-
-if __name__ == '__main__':
-    import logging.handlers
-
-
-    def init_log():
-        log_path = "./trader.log"
-        fh = logging.handlers.TimedRotatingFileHandler(
-            filename=log_path, when='midnight')
-        fh.suffix = "%Y%m%d-%H%M.log"
-        fh.setLevel(logging.INFO)
-
-        sh = logging.StreamHandler()
-        sh.setLevel(logging.DEBUG)
-
-        # create formatter
-        fmt = "%(levelname)s %(asctime)s.%(msecs)03d %(filename)s %(message)s"
-        datefmt = "%a %d %b %Y %H:%M:%S"
-        formatter = logging.Formatter(fmt, datefmt)
-
-        # add handler and formatter to logger
-        fh.setFormatter(formatter)
-        sh.setFormatter(formatter)
-        logger = logging.getLogger()
-        logger.addHandler(fh)
-        logger.addHandler(sh)
-        logger.setLevel(logging.DEBUG)
-
-
-    init_log()
-    engine = MainEngine()
-    engine.start()
+        self.running = False

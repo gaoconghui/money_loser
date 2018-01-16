@@ -46,7 +46,7 @@ def gunziptxt(data):
 # 请求 Market Detail 数据
 # tradeStr="""{"req": "market.ethusdt.detail", "id": "id12"}"""
 
-class HuobiMarket(threading.Thread):
+class HuobiMarket(object):
     def __init__(self, event_engine):
         super(HuobiMarket, self).__init__()
         self.event_engine = event_engine
@@ -54,6 +54,7 @@ class HuobiMarket(threading.Thread):
         self.ws = create_connection("wss://api.huobi.pro/ws")
         self.subscribe_list = []
         self.depth_subs = set()
+        self.__market_thread = threading.Thread(target=self.run)
         self.running = True
 
     def subscribe_depth_for_engine(self, event):
@@ -123,12 +124,19 @@ class HuobiMarket(threading.Thread):
             except:
                 import traceback
                 logger.error(traceback.format_exc())
-                self.reconnect()
-        self.ws.close()
+                if self.running:
+                    self.reconnect()
+        if self.ws.connected:
+            self.ws.close()
+
+    def start(self):
+        self.__market_thread.start()
 
     def stop(self):
         self.running = False
-        self.ws.close()
+        self.__market_thread.join(1)
+        if self.ws.connected:
+            self.ws.close()
 
 
 if __name__ == '__main__':
