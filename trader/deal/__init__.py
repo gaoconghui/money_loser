@@ -3,8 +3,8 @@ import base64
 import datetime
 import hashlib
 import hmac
-import urlparse
 import logging
+import urlparse
 from collections import namedtuple
 
 from huobi_util import *
@@ -119,7 +119,7 @@ class HuobiApi(object):
 
         url = '/v1/order/orders/place'
         result = self._api_key_post(params, url)
-        if result.get("status","") != "ok":
+        if result.get("status", "") != "ok":
             logger.error("send order error , {s}".format(s=json.dumps(result)))
         return result.get("data")
 
@@ -249,15 +249,15 @@ class HuobiTrader(HuobiApi):
         order_id1 = t1.join()
         order_id2 = t2.join()
         try:
-            result = self.cancel_orders([order_id1,order_id2])
+            result = self.cancel_orders([order_id1, order_id2])
             order_success_map = {}
-            for item in result.get('data',{}).get('failed',[]):
+            for item in result.get('data', {}).get('failed', []):
                 order_success_map[item['order-id']] = True
-            for item in result.get('data',{}).get('success',[]):
+            for item in result.get('data', {}).get('success', []):
                 order_success_map[item] = False
         except:
-            logger.info("cancel orders error , {o1}  {o2}".format(o1=order_id1,o2=order_id2))
-            return False,False
+            logger.info("cancel orders error , {o1}  {o2}".format(o1=order_id1, o2=order_id2))
+            return False, False
         self.retry_update_balance()
         return order_success_map.get(order_id1), order_success_map.get(order_id2)
 
@@ -368,7 +368,45 @@ def get_symbols():
     return http_get_request(url, params)
 
 
+def price(symbol):
+    try:
+        result = get_trade(symbol)
+        return float(result['tick']['data'][0]['price'])
+    except:
+        print symbol
+        return 0
+
+
+def show_balance_usdt(trader):
+    balance = trader.get_balance()
+    print balance
+    balance = {item['currency']: float(item['balance']) for item in balance['data']['list'] if
+               float(item['balance']) > 0}
+    btc_usdt = price("btcusdt")
+    balance_list = []
+    for coin, count in balance.iteritems():
+        if coin == "btc" :
+            btc_price = btc_usdt
+        else:
+            btc_price = price(coin + "btc") * btc_usdt * 6.5
+        balance_list.append((coin, btc_price * count, count))
+    balance_list.sort(key=lambda x: -x[1])
+    for item in balance_list:
+        print item
+    print sum([item[1] for item in balance_list])
+
+
 if __name__ == '__main__':
     # import time
     #
     trader = HuobiTrader(access_key=password.access_key, secret_key=password.secret_key)
+    # # print trader.get_balance()
+    show_balance_usdt(trader)
+    # symbols = get_symbols()
+    # data = [item for item in symbols['data'] if item['quote-currency'] == "btc"]
+    # for item in data:
+    #     price_precision = item['price-precision']
+    #     coin = item['base-currency']
+    #     amount = 10 ** (price_precision - 3)
+    #     price = float("0." + "0" * (price_precision - 1) + "1")
+    #     print coin, price_precision, price, amount
