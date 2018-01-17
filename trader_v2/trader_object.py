@@ -10,7 +10,7 @@ EMPTY_FLOAT = 0.0
 # 最基本的交易数据，包括price和count
 TradeItem = namedtuple("TradeItem", field_names=["price", "count"])
 # 时长上成交订单的数据，包括价格，数量，方向，时间，以及唯一标识
-MarketTradeItem = namedtuple("MarketTradeItem", field_names=['price', 'count', 'direction', 'ts', 'id'])
+MarketTradeItem = namedtuple("MarketTradeItem", field_names=['price', 'count', 'direction', 'ts', 'id','symbol'])
 
 
 class MarketDepth(object):

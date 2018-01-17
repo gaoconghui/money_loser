@@ -48,6 +48,8 @@ def gunziptxt(data):
 # 请求 Market Detail 数据
 # tradeStr="""{"req": "market.ethusdt.detail", "id": "id12"}"""
 cache = Cache()
+
+
 class HuobiMarket(object):
     def __init__(self, event_engine):
         super(HuobiMarket, self).__init__()
@@ -141,7 +143,8 @@ class HuobiMarket(object):
                 count=market_trade_item['amount'],
                 direction=market_trade_item['direction'],
                 id=market_trade_item['id'],
-                ts=market_trade_item['ts']
+                ts=market_trade_item['ts'],
+                symbol=symbol
             )}
             self.event_engine.put(event)
 
