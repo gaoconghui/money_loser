@@ -2,7 +2,7 @@
 
 import time
 
-from event import Event, EVENT_TIMER, EVENT_HUOBI_MARKET_DETAIL_PRE
+from event import Event, EVENT_TIMER, EVENT_HUOBI_MARKET_DETAIL_PRE, EVENT_HUOBI_SUBSCRIBE_TRADE
 from trader_v2.engine import EventEngine
 from trader_v2.market import HuobiMarket
 
@@ -40,9 +40,10 @@ def market_test():
     engine = EventEngine()
     engine.start()
     market = HuobiMarket(engine)
-    market.subscribe_trade_detail("btcusdt")
     market.start()
-
+    event_sub = Event(EVENT_HUOBI_SUBSCRIBE_TRADE)
+    event_sub.dict_ = {"data" : "btcusdt"}
+    engine.put(event_sub)
     type_ = EVENT_HUOBI_MARKET_DETAIL_PRE + "btcusdt"
     def fun(event):
         print event.dict_

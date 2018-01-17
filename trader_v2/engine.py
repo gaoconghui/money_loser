@@ -11,6 +11,7 @@ from threading import Thread
 from trader_v2.event import EVENT_TIMER, Event, EVENT_HEARTBEAT
 from trader_v2.market import HuobiMarket
 from trader_v2.strategy.strategy_one import StrategyOne
+from trader_v2.strategy.strategy_two import StrategyTwo
 from trader_v2.trader import HuobiDebugTrader
 
 logger = logging.getLogger("engine")
@@ -186,7 +187,7 @@ class MainEngine(object):
         self.markets.append(huobi_market)
 
     def start_strategies(self):
-        strategy = StrategyOne(self.event_engine, "wax")
+        strategy = StrategyTwo(self.event_engine, "btcusdt")
         strategy.start()
         self.strategies.append(strategy)
 

@@ -66,6 +66,7 @@ class HuobiTrader(Trader):
         super(HuobiTrader, self).__init__(event_engine)
         self.huobi_api = HuobiApi(secret_key=secret_config.huobi_sectet_key,
                                   access_key=secret_config.huobi_access_key)
+        self.update_balance()
 
     def send_and_cancel_orders(self, event):
         orders = event.dict_['data']

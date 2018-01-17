@@ -18,6 +18,13 @@ EVENT_HUOBI_SEND_CANCEL_ORDERS = "huobi_deal"
 # {"data": { coin : balance }}
 EVENT_HUOBI_BALANCE = "huobi_balance"
 
+# 查询火币网k线请求
+# {"data" : {"symbol" : symbol , "period" : "period"}}
+EVENT_HUOBI_REQUEST_KLINE = "huobi_request_kline"
+# 查询火币网k线图返回
+EVENT_HUOBI_RESPONSE_KLINE_PRE = "huobi_response_kline_"
+
+
 
 class Event:
     """事件对象"""

@@ -72,9 +72,9 @@ class StrategyOne(StrategyBase):
             chain_item1 = self.depth_map[chain_1]
             chain_item2 = self.depth_map[chain_2]
             bid = TradeItem(price=chain_item1.bids[0].price * chain_item2.bids[0].price,
-                            count=chain_item1.bids[0].count)
+                            amount=chain_item1.bids[0].amount)
             ask = TradeItem(price=chain_item1.asks[0].price * chain_item2.asks[0].price,
-                            count=chain_item1.asks[0].count)
+                            amount=chain_item1.asks[0].amount)
             return bid, ask
 
     def check(self):
@@ -91,20 +91,20 @@ class StrategyOne(StrategyBase):
                 self.make_deal(self.coin_eth_name, self.coin_btc_name)
 
     def compute_earn_percent(self, sell, buy, sell_name, buy_name):
-        count = min(sell.count, buy.count)
-        earn = (sell.price * 0.998 - buy.price * 1.002) * count
-        spend = sell.price * count
+        amount = min(sell.amount, buy.amount)
+        earn = (sell.price * 0.998 - buy.price * 1.002) * amount
+        spend = sell.price * amount
         percent = earn / spend * 100
 
         logger.info(
             "may sell {sell} and buy {buy} , {p1} --> {p2} , "
-            "count : {count} , earn : {earn} ({percent})".format(sell=sell_name,
-                                                                 buy=buy_name,
-                                                                 p1=sell.price,
-                                                                 p2=buy.price,
-                                                                 count=count,
-                                                                 earn=earn,
-                                                                 percent=str(percent)[:6] + "%"))
+            "amount : {amount} , earn : {earn} ({percent})".format(sell=sell_name,
+                                                                   buy=buy_name,
+                                                                   p1=sell.price,
+                                                                   p2=buy.price,
+                                                                   amount=amount,
+                                                                   earn=earn,
+                                                                   percent=str(percent)[:6] + "%"))
 
     def make_deal(self, sell, buy):
         if not self.can_send_orders:
@@ -121,13 +121,13 @@ class StrategyOne(StrategyBase):
         #     logger.error("buy coin name error {b}".format(b=buy))
         #     return
 
-        count = min(self.depth_map[sell].bids[0].count, self.depth_map[buy].asks.count, 500)
-        count = int(count)
-        if count < 1:
-            logger.info("count (c) < 1 ".format(c=count))
+        amount = min(self.depth_map[sell].bids[0].amount, self.depth_map[buy].asks.amount, 500)
+        amount = int(amount)
+        if amount < 1:
+            logger.info("amount (c) < 1 ".format(c=amount))
             return
-        sell_item = SellLimitOrder(symbol=sell, price=sell_price, amount=count)
-        buy_item = BuyLimitOrder(symbol=buy, price=buy_price, amount=count)
+        sell_item = SellLimitOrder(symbol=sell, price=sell_price, amount=amount)
+        buy_item = BuyLimitOrder(symbol=buy, price=buy_price, amount=amount)
         event = Event(EVENT_HUOBI_SEND_CANCEL_ORDERS)
         event.dict_ = {"data": [sell_item, buy_item], "callback": self.on_send_orders}
         self.event_engine.put(event)
