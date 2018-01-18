@@ -10,7 +10,8 @@ EMPTY_FLOAT = 0.0
 # 最基本的交易数据，包括price和amount
 TradeItem = namedtuple("TradeItem", field_names=["price", "amount"])
 # 时长上成交订单的数据，包括价格，数量，方向，时间，以及唯一标识
-MarketTradeItem = namedtuple("MarketTradeItem", field_names=['price', 'amount', 'direction', 'datetime', 'id', 'symbol'])
+MarketTradeItem = namedtuple("MarketTradeItem",
+                             field_names=['price', 'amount', 'direction', 'datetime', 'id', 'symbol'])
 
 
 class MarketDepth(object):
@@ -64,3 +65,11 @@ class BarData(object):
 
         self.count = EMPTY_INT  # 成交量
         self.amount = EMPTY_FLOAT
+
+    def __str__(self):
+        return "BarData : {symbol} , open:{open} , high:{high} , low:{low} , close:{close} , data:{datetime} , count:{count} , amount:{amount}".format(
+            **self.__dict__
+        )
+
+    def __repr__(self):
+        return str(self)

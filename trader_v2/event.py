@@ -7,10 +7,12 @@ EVENT_HEARTBEAT = "heartbeat"
 # {"data" : MarketDepth}
 EVENT_HUOBI_DEPTH_PRE = "huobi_depth_"
 EVENT_HUOBI_MARKET_DETAIL_PRE = "huobi_market_detail_"
+EVENT_HUOBI_KLINE_PRE = "huobi_kline_"
 # 订阅某symbol行情
 # {"data": symbol}
 EVENT_HUOBI_SUBSCRIBE_DEPTH = "huobi_subscribe_depth"
 EVENT_HUOBI_SUBSCRIBE_TRADE = "huobi_subscribe_trade"
+EVENT_HUOBI_SUBSCRIBE_1MIN_KLINE = "huobi_subscribe_1min_kline"
 # 火币网下单后立马删除
 # {"data": [sell_item, buy_item], "callback": callback}
 EVENT_HUOBI_SEND_CANCEL_ORDERS = "huobi_deal"

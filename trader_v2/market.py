@@ -14,7 +14,8 @@ from six import StringIO
 from websocket import create_connection
 
 from trader_v2.event import Event, EVENT_HUOBI_DEPTH_PRE, EVENT_HUOBI_SUBSCRIBE_DEPTH, EVENT_HUOBI_SUBSCRIBE_TRADE, \
-    EVENT_HUOBI_MARKET_DETAIL_PRE, EVENT_HUOBI_REQUEST_KLINE, EVENT_HUOBI_RESPONSE_KLINE_PRE
+    EVENT_HUOBI_MARKET_DETAIL_PRE, EVENT_HUOBI_REQUEST_KLINE, EVENT_HUOBI_RESPONSE_KLINE_PRE, \
+    EVENT_HUOBI_SUBSCRIBE_1MIN_KLINE, EVENT_HUOBI_KLINE_PRE
 from trader_v2.trader_object import MarketDepth, TradeItem, MarketTradeItem, BarData
 from trader_v2.util import Cache
 
@@ -62,6 +63,7 @@ class HuobiMarket(object):
         self.engine_event_processor = {
             EVENT_HUOBI_SUBSCRIBE_DEPTH: self.subscribe_depth,
             EVENT_HUOBI_SUBSCRIBE_TRADE: self.subscribe_trade_detail,
+            EVENT_HUOBI_SUBSCRIBE_1MIN_KLINE: self.subscribe_1min_kline,
             EVENT_HUOBI_REQUEST_KLINE: self.request_kline
         }
         for _type in self.engine_event_processor.keys():
@@ -101,6 +103,13 @@ class HuobiMarket(object):
         trade_str = json.dumps({"sub": sub_name, "id": "id10"})
         self.ws.send(trade_str)
 
+    @cache.accept_once
+    def subscribe_1min_kline(self, symbol):
+        logger.info("subscribe imin kline {symbol}".format(symbol=symbol))
+        sub_name = "market.{symbol}.kline.1min".format(symbol=symbol)
+        trade_str = json.dumps({"sub": sub_name, "id": "id10"})
+        self.ws.send(trade_str)
+
     def request_kline(self, data):
         symbol = data['symbol']
         period = data.get("period", "1min")
@@ -124,6 +133,25 @@ class HuobiMarket(object):
                 self.parse_depth_recv(item)
             elif "trade.detail" in ch:
                 self.parse_trade_detail_recv(item)
+            elif "kline" in ch:
+                self.parse_kline_recv(item)
+
+    def parse_kline_recv(self, item):
+        symbol = self.parse_symbol(item['ch'])
+        b = item['tick']
+        bar = BarData()
+        bar.symbol = symbol
+        bar.open = b['open']
+        bar.high = b['high']
+        bar.low = b['low']
+        bar.close = b['close']
+        bar.amount = b['amount']
+        bar.count = b['count']
+        bar.datetime = datetime.datetime.fromtimestamp(b['id'])
+        period = item['ch'].split(".")[-1]
+        event = Event(EVENT_HUOBI_KLINE_PRE + symbol + "_" + period)
+        event.dict_ = {"data": bar}
+        self.event_engine.put(event)
 
     def parse_kline_rep(self, item):
         symbol = self.parse_symbol(item['rep'])

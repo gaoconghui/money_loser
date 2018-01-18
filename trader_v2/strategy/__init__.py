@@ -67,6 +67,19 @@ class StrategyBase(object):
     def on_market_trade(self, market_trade_item):
         pass
 
+    def subscribe_1min_kline(self, symbol):
+        event = Event(EVENT_HUOBI_SUBSCRIBE_1MIN_KLINE)
+        event.dict_ = {"data": symbol}
+        self.event_engine.put(event)
+        self.event_engine.register(EVENT_HUOBI_KLINE_PRE + symbol + "_" + "1min", self._on_1min_kline)
+
+    def _on_1min_kline(self, event):
+        data = event.dict_['data']
+        self.on_1min_kline(data)
+
+    def on_1min_kline(self, bar_data):
+        print bar_data
+
     def stop(self):
         logger.info("close strategy {name}".format(name=self.__name__))
 
@@ -75,7 +88,8 @@ class BarManager(object):
     """
     K线合成器，支持：
     1. 基于Tick合成1分钟K线
-    2. 基于1分钟K线合成X分钟K线（X可以是2、3、5、10、15、30、60）
+    2. 支持之间传入bar
+    3. 基于1分钟K线合成X分钟K线（X可以是2、3、5、10、15、30、60）
     """
 
     # ----------------------------------------------------------------------
@@ -91,7 +105,17 @@ class BarManager(object):
         self.last_market_trade_item = None  # 上一个市场交易数据的缓存
 
     # ----------------------------------------------------------------------
-    def update(self, market_trade_item):
+    def update_from_bar(self, bar):
+        # 如果已经存在且是新的一分钟了
+        if self.bar and self.bar.datetime.minute != bar.datetime.minute:
+            # 生成上一分钟K线的时间戳
+            self.bar.datetime = self.bar.datetime.replace(second=0, microsecond=0)  # 将秒和微秒设为0
+
+            # 推送已经结束的上一分钟K线
+            self.onBar(self.bar)
+        self.bar = bar
+
+    def update_from_market_trade(self, market_trade_item):
         """TICK更新"""
         new_minute = False  # 默认不是新的一分钟
 
@@ -126,7 +150,7 @@ class BarManager(object):
         # 通用更新部分
         self.bar.close = market_trade_item.price
         self.bar.datetime = market_trade_item.datetime
-
+        self.bar.count += 1
         self.bar.amount += market_trade_item.amount  # 当前K线内的成交量
 
         # 缓存Tick
@@ -278,13 +302,16 @@ class ArrayManager(object):
         return result[-1]
 
     # ----------------------------------------------------------------------
-    def macd(self, fastPeriod, slowPeriod, signalPeriod, array=False):
-        """MACD指标"""
-        macd, signal, hist = talib.MACD(self.close, fastPeriod,
-                                        slowPeriod, signalPeriod)
+    def macd(self, fast_period, slow_period, signal_period, array=False):
+        """
+        macd 指标
+        hist 由负变正 金叉
+        """
+        dif, dea, hist = talib.MACD(self.close, fast_period,
+                                    slow_period, signal_period)
         if array:
-            return macd, signal, hist
-        return macd[-1], signal[-1], hist[-1]
+            return dif, dea, hist
+        return dif[-1], dea[-1], hist[-1]
 
     # ----------------------------------------------------------------------
     def adx(self, n, array=False):
