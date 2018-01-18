@@ -6,7 +6,7 @@
 import logging
 
 from trader_v2.event import Event, EVENT_HUOBI_SEND_CANCEL_ORDERS
-from trader_v2.strategy import StrategyBase
+from trader_v2.strategy.base import StrategyBase
 from trader_v2.trader_object import TradeItem, SellLimitOrder, BuyLimitOrder
 
 logger = logging.getLogger("strategy.strategy_one")

@@ -6,7 +6,7 @@ macd
 import logging
 
 from trader_v2.event import EVENT_HUOBI_REQUEST_KLINE, EVENT_HUOBI_RESPONSE_KLINE_PRE
-from trader_v2.strategy import StrategyBase, BarManager, ArrayManager, Event
+from trader_v2.strategy.base import StrategyBase, BarManager, ArrayManager, Event
 
 logger = logging.getLogger("strategy.strategy_two")
 
@@ -57,7 +57,7 @@ class StrategyTwo(StrategyBase):
             print self.bar_manager.bar
             _, _, hist = self.array_manager.macd(fast_period=12, slow_period=26, signal_period=9, array=True)
             if hist[-2] < 0 < hist[-1]:
-                print hist[-2],hist[-1]
+                print hist[-2], hist[-1]
                 print "buy"
             if hist[-1] < 0 < hist[-2]:
                 print hist[-2], hist[-1]
