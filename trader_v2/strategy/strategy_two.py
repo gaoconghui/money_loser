@@ -4,6 +4,7 @@
 macd 
 """
 import logging
+from functools import partial
 
 from trader_v2.strategy.base import StrategyBase, BarManager, ArrayManager
 
@@ -29,8 +30,8 @@ class StrategyTwo(StrategyBase):
         if not isinstance(symbols, list):
             symbols = [symbols]
         self.symbols = symbols
-        self.bar_manager = BarManager(self.on_bar)
-        self.array_manager = ArrayManager()
+        self.bar_managers = {symbol: BarManager(partial(self.on_bar, symbol)) for symbol in symbols}
+        self.array_managers = {symbol: ArrayManager() for symbol in symbols}
 
         self.running = True
 
@@ -41,20 +42,24 @@ class StrategyTwo(StrategyBase):
             self.subscribe_1min_kline(symbol)
 
     def on_1min_kline(self, bar_data):
-        self.bar_manager.update_from_bar(bar_data)
+        symbol = bar_data.symbol
+        self.bar_managers[symbol].update_from_bar(bar_data)
 
     def on_1min_kline_req(self, bars):
+        if not bars or len(bars) == 0:
+            return
+        symbol = bars[0].symbol
         for bar in bars:
-            self.bar_manager.update_from_bar(bar)
+            self.bar_managers[symbol].update_from_bar(bar)
 
-    def on_bar(self, bar):
-        self.array_manager.update_bar(bar)
-        self.check()
+    def on_bar(self, symbol, bar):
+        self.array_managers[symbol].update_bar(bar)
+        self.check(symbol)
 
-    def check(self):
+    def check(self, symbol):
         if self.running:
-            print self.bar_manager.bar
-            _, _, hist = self.array_manager.macd(fast_period=12, slow_period=26, signal_period=9, array=True)
+            print self.bar_managers[symbol].bar
+            _, _, hist = self.array_managers[symbol].macd(fast_period=12, slow_period=26, signal_period=9, array=True)
             if hist[-2] < 0 < hist[-1]:
                 print hist[-2], hist[-1]
                 print "buy"
