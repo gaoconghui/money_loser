@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import datetime
 from collections import namedtuple
 
 EMPTY_STRING = ''
@@ -37,15 +38,6 @@ order_type = {
     "SELL_LIMIT": "sell-limit"
 }
 
-# 市价买
-BuyMarketOrder = namedtuple("BUY_MARKET", field_names=["symbol", "amount"])
-# 限价买
-BuyLimitOrder = namedtuple("BUY_LIMIT", field_names=["symbol", "price", "amount"])
-# 市价卖
-SellMarketOrder = namedtuple("SELL_MARKET", field_names=["symbol", "amount"])
-# 限价卖
-SellLimitOrder = namedtuple("SELL_LIMIT", field_names=["symbol", "price", "amount"])
-
 
 class BarData(object):
     """K线数据"""
@@ -73,3 +65,36 @@ class BarData(object):
 
     def __repr__(self):
         return str(self)
+
+
+# 市价买
+BuyMarketOrder = namedtuple("BUY_MARKET", field_names=["symbol", "amount"])
+# 限价买
+BuyLimitOrder = namedtuple("BUY_LIMIT", field_names=["symbol", "price", "amount"])
+# 市价卖
+SellMarketOrder = namedtuple("SELL_MARKET", field_names=["symbol", "amount"])
+# 限价卖
+SellLimitOrder = namedtuple("SELL_LIMIT", field_names=["symbol", "price", "amount"])
+
+
+class TradeRequest(object):
+    """
+    包装发送，如下单，撤单等
+    """
+
+    def __init__(self, order, callback):
+        self.symbol = order.symbol
+        self.order = order
+        self.request_time = datetime.datetime.now()
+        self.callback = callback
+
+
+class TradeResponse(object):
+    """
+    包装req的返回
+    """
+
+    def __init__(self, request, result):
+        self.request = request
+        self.response_time = datetime.datetime.now()
+        self.result = result

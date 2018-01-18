@@ -5,7 +5,6 @@
 """
 import logging
 
-from trader_v2.event import Event, EVENT_HUOBI_SEND_CANCEL_ORDERS
 from trader_v2.strategy.base import StrategyBase
 from trader_v2.trader_object import TradeItem, SellLimitOrder, BuyLimitOrder
 
@@ -19,12 +18,8 @@ class StrategyOne(StrategyBase):
 
     __name__ = "strategy one"
 
-    def __init__(self, event_engine, coin_name):
-        """
-        :param event_engine: 事件驱动引擎
-        :param coin_name: 
-        """
-        super(StrategyOne, self).__init__(event_engine)
+    def __init__(self, strategy_engine, coin_name):
+        super(StrategyOne, self).__init__(strategy_engine)
         self.coin_name = coin_name
         self.coin_btc_name = "%sbtc" % coin_name
         self.coin_eth_name = "%seth" % coin_name
@@ -128,17 +123,16 @@ class StrategyOne(StrategyBase):
             return
         sell_item = SellLimitOrder(symbol=sell, price=sell_price, amount=amount)
         buy_item = BuyLimitOrder(symbol=buy, price=buy_price, amount=amount)
-        event = Event(EVENT_HUOBI_SEND_CANCEL_ORDERS)
-        event.dict_ = {"data": [sell_item, buy_item], "callback": self.on_send_orders}
-        self.event_engine.put(event)
+        self.strategy_engine.send_orders_and_cancel([sell_item, buy_item], callback=self.on_send_orders)
         self.can_send_orders = False
 
-    def on_send_orders(self, event, result):
-        self.can_send_orders = True
-        orders = event.dict_['data']
-        success_sell, success_buy = result
-        logger.info("sell {sell} ({success_sell}), buy {buy} ({success_buy}) , stragety {status}".format(sell=orders[0],
-                                                                                                         buy=orders[1],
-                                                                                                         success_buy=success_buy,
-                                                                                                         success_sell=success_sell,
-                                                                                                         status=success_sell and success_buy))
+    def on_send_orders(self, result):
+        pass
+        # self.can_send_orders = True
+        # orders = event.dict_['data']
+        # success_sell, success_buy = result
+        # logger.info("sell {sell} ({success_sell}), buy {buy} ({success_buy}) , stragety {status}".format(sell=orders[0],
+        #                                                                                                  buy=orders[1],
+        #                                                                                                  success_buy=success_buy,
+        #                                                                                                  success_sell=success_sell,
+        #                                                                                                  status=success_sell and success_buy))

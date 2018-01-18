@@ -10,26 +10,25 @@ from threading import Thread
 
 from trader_v2 import secret_config
 from trader_v2.api import HuobiApi
-from trader_v2.event import EVENT_HUOBI_SEND_CANCEL_ORDERS, EVENT_HUOBI_BALANCE, Event
+from trader_v2.event import EVENT_HUOBI_BALANCE, Event
 from trader_v2.util import ThreadWithReturnValue
 
 logger = logging.getLogger("trader.huobi")
 
 
 class Trader(object):
+    """
+    对外提供一系列交易接口，并内部异步执行后回调
+    """
+
     def __init__(self, event_engine):
         self.event_engine = event_engine
         self.req_id = 0
         self.running = True
         self.__processor = Thread(target=self.__run)
         self.__job_queue = Queue()
-        self.func_mapping = {
-            EVENT_HUOBI_SEND_CANCEL_ORDERS: self.send_and_cancel_orders
-        }
 
     def start(self):
-        self.event_engine.register(EVENT_HUOBI_SEND_CANCEL_ORDERS, self.process_event)
-        # self.event_engine.register(EVENT_TIMER,self.update_balance)
         self.__processor.start()
 
     def process_event(self, event):
@@ -38,13 +37,24 @@ class Trader(object):
     def __run(self):
         while self.running:
             try:
-                event = self.__job_queue.get(block=True, timeout=1)
-                type_ = event.type_
-                self.func_mapping[type_](event)
+                job = self.__job_queue.get(block=True, timeout=1)
+                func = job['func']
+                kwargs = job['kwargs']
+                callback = kwargs.pop("callback")
+                result = func(**kwargs)
+                if callback:
+                    callback(result)
+
             except Empty:
                 pass
 
-    def send_and_cancel_orders(self, event):
+    def send_and_cancel_orders(self, orders, callback):
+        self.__job_queue.put({
+            "func": self._inner_send_and_cancel_orders,
+            "kwargs": {"orders": orders, "callback": callback},
+        })
+
+    def _inner_send_and_cancel_orders(self, orders):
         pass
 
     def update_balance(self):
@@ -68,9 +78,7 @@ class HuobiTrader(Trader):
                                   access_key=secret_config.huobi_access_key)
         self.update_balance()
 
-    def send_and_cancel_orders(self, event):
-        orders = event.dict_['data']
-
+    def _inner_send_and_cancel_orders(self, orders):
         t1 = ThreadWithReturnValue(target=self.huobi_api.send_order, args=(orders[0],))
         t2 = ThreadWithReturnValue(target=self.huobi_api.send_order, args=(orders[1],))
         t1.start()
@@ -88,11 +96,8 @@ class HuobiTrader(Trader):
         except:
             logger.info("cancel orders error , {o1}  {o2}".format(o1=order_id1, o2=order_id2))
             result = False, False
-
-        self.update_balance()
-        if "callback" in event.dict_:
-            callback = event.dict_['callback']
-            callback(event, result)
+        return result
+        # self.update_balance()
 
     def update_balance(self):
         for i in range(3):
@@ -107,10 +112,8 @@ class HuobiTrader(Trader):
 
 
 class HuobiDebugTrader(Trader):
-    def send_and_cancel_orders(self, event):
+    def _inner_send_and_cancel_orders(self, orders):
         time.sleep(3)
-        for order in event.dict_['data']:
+        for order in orders:
             print "deal", order
-        if "callback" in event.dict_:
-            callback = event.dict_['callback']
-            callback(event, [True, True])
+        return True, True

@@ -13,9 +13,7 @@ EVENT_HUOBI_KLINE_PRE = "huobi_kline_"
 EVENT_HUOBI_SUBSCRIBE_DEPTH = "huobi_subscribe_depth"
 EVENT_HUOBI_SUBSCRIBE_TRADE = "huobi_subscribe_trade"
 EVENT_HUOBI_SUBSCRIBE_1MIN_KLINE = "huobi_subscribe_1min_kline"
-# 火币网下单后立马删除
-# {"data": [sell_item, buy_item], "callback": callback}
-EVENT_HUOBI_SEND_CANCEL_ORDERS = "huobi_deal"
+
 # 火币网持仓
 # {"data": { coin : balance }}
 EVENT_HUOBI_BALANCE = "huobi_balance"

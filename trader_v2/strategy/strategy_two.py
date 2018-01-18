@@ -5,8 +5,7 @@ macd
 """
 import logging
 
-from trader_v2.event import EVENT_HUOBI_REQUEST_KLINE, EVENT_HUOBI_RESPONSE_KLINE_PRE
-from trader_v2.strategy.base import StrategyBase, BarManager, ArrayManager, Event
+from trader_v2.strategy.base import StrategyBase, BarManager, ArrayManager
 
 logger = logging.getLogger("strategy.strategy_two")
 
@@ -22,6 +21,7 @@ class StrategyTwo(StrategyBase):
 
     def __init__(self, event_engine, symbols):
         """
+        虽说支持传入多个symbol，但实际上只支持一个symbol，需要改进
         :param event_engine: 事件驱动引擎
         :param coin_name: 
         """
@@ -37,16 +37,15 @@ class StrategyTwo(StrategyBase):
     def start(self):
         StrategyBase.start(self)
         for symbol in self.symbols:
+            self.request_1min_kline(symbol)
             self.subscribe_1min_kline(symbol)
-            # 请求1min K线图
-            event = Event(EVENT_HUOBI_REQUEST_KLINE)
-            event.dict_ = {"data": {"symbol": symbol, "period": "1min"}}
-            self.event_engine.put(event)
-            self.event_engine.register(EVENT_HUOBI_RESPONSE_KLINE_PRE + symbol + "_" + "1min",
-                                       self.on_req_kline_1min)
 
     def on_1min_kline(self, bar_data):
         self.bar_manager.update_from_bar(bar_data)
+
+    def on_1min_kline_req(self, bars):
+        for bar in bars:
+            self.bar_manager.update_from_bar(bar)
 
     def on_bar(self, bar):
         self.array_manager.update_bar(bar)
@@ -62,10 +61,6 @@ class StrategyTwo(StrategyBase):
             if hist[-1] < 0 < hist[-2]:
                 print hist[-2], hist[-1]
                 print "sell"
-
-    def on_req_kline_1min(self, event):
-        for bar in event.dict_['data']:
-            self.bar_manager.update_from_bar(bar)
 
     def stop(self):
         StrategyBase.stop(self)

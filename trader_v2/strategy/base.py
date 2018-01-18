@@ -4,15 +4,14 @@ import logging
 import numpy as np
 import talib
 
-from trader_v2.event import *
 from trader_v2.trader_object import BarData
 
 logger = logging.getLogger("strategy")
 
 
 class StrategyBase(object):
-    def __init__(self, event_engine):
-        self.event_engine = event_engine
+    def __init__(self, strategy_engine):
+        self.strategy_engine = strategy_engine
         self.balance = {}
 
     def start(self):
@@ -22,63 +21,32 @@ class StrategyBase(object):
         """
         订阅五档行情数据
         """
-        event = Event(EVENT_HUOBI_SUBSCRIBE_DEPTH)
-        event.dict_ = {"data": symbol}
-        self.event_engine.put(event)
-        self.event_engine.register(EVENT_HUOBI_DEPTH_PRE + symbol, self._on_depth)
-
-    def _on_depth(self, event):
-        depth_item = event.dict_['data']
-        self.on_depth(depth_item)
-
-    def on_depth(self, depth_item):
-        """
-        如果订阅了五档行情，需要实现这个方法
-        :param depth_item: 
-        :return: 
-        """
-        pass
-
-    def subscribe_balance(self):
-        """
-        订阅持仓数据
-        :return: 
-        """
-        self.event_engine.register(EVENT_HUOBI_BALANCE, self._on_balance)
-
-    def _on_balance(self, event):
-        balance = event.dict_['data']
-        self.balance = balance
+        self.strategy_engine.subscribe_depth(symbol, callback=self.on_depth)
 
     def subscribe_market_trade(self, symbol):
         """
         订阅市场实时行情
         :return: 
         """
-        event = Event(EVENT_HUOBI_SUBSCRIBE_TRADE)
-        event.dict_ = {"data": symbol}
-        self.event_engine.put(event)
-        self.event_engine.register(EVENT_HUOBI_MARKET_DETAIL_PRE + symbol, self._on_market_trade)
+        self.strategy_engine.subscribe_market_trade(symbol, callback=self.on_market_trade)
 
-    def _on_market_trade(self, event):
-        data = event.dict_['data']
-        self.on_market_trade(data)
+    def subscribe_1min_kline(self, symbol):
+        self.strategy_engine.subscribe_1min_kline(symbol, callback=self.on_1min_kline)
+
+    def request_1min_kline(self, symbol):
+        self.strategy_engine.request_1min_kline(symbol, callback=self.on_1min_kline_req)
+
+    def on_depth(self, depth_item):
+        print depth_item
 
     def on_market_trade(self, market_trade_item):
         pass
 
-    def subscribe_1min_kline(self, symbol):
-        event = Event(EVENT_HUOBI_SUBSCRIBE_1MIN_KLINE)
-        event.dict_ = {"data": symbol}
-        self.event_engine.put(event)
-        self.event_engine.register(EVENT_HUOBI_KLINE_PRE + symbol + "_" + "1min", self._on_1min_kline)
-
-    def _on_1min_kline(self, event):
-        data = event.dict_['data']
-        self.on_1min_kline(data)
-
     def on_1min_kline(self, bar_data):
         print bar_data
+
+    def on_1min_kline_req(self, klines):
+        print klines
 
     def stop(self):
         logger.info("close strategy {name}".format(name=self.__name__))

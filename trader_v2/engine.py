@@ -10,7 +10,7 @@ from threading import Thread
 
 from trader_v2.event import EVENT_TIMER, Event, EVENT_HEARTBEAT
 from trader_v2.market import HuobiMarket
-from trader_v2.strategy.strategy_one import StrategyOne
+from trader_v2.strategy.strategy_engine import StrategyEngine
 from trader_v2.strategy.strategy_two import StrategyTwo
 from trader_v2.trader import HuobiDebugTrader
 
@@ -176,8 +176,8 @@ class MainEngine(object):
     def __init__(self):
         self.event_engine = EventEngine()
         self.markets = []
-        self.traders = []
-        self.strategies = []
+        self.trader = None
+        self.strategy_engine = None
         self.heartbeat = HeartBeat(event_engine=self.event_engine, max_delay=200, close_func=self.stop)
         self.running = True
 
@@ -187,14 +187,15 @@ class MainEngine(object):
         self.markets.append(huobi_market)
 
     def start_strategies(self):
-        strategy = StrategyTwo(self.event_engine, "btcusdt")
-        strategy.start()
-        self.strategies.append(strategy)
+        self.strategy_engine = StrategyEngine(main_engine=self, event_engine=self.event_engine)
+        strategy = StrategyTwo(self.strategy_engine, "btcusdt")
+        self.strategy_engine.append(strategy)
+        self.strategy_engine.start()
 
-    def start_traders(self):
-        dealer = HuobiDebugTrader(self.event_engine)
-        dealer.start()
-        self.traders.append(dealer)
+    def start_trader(self):
+        trader = HuobiDebugTrader(self.event_engine)
+        trader.start()
+        self.trader = trader
 
     def start_heartbeat(self):
         self.heartbeat.start()
@@ -203,17 +204,18 @@ class MainEngine(object):
         # 顺序不能变 先启动事件驱动引擎，然后详情获取，交易系统，最后启动策略系统
         self.event_engine.start()
         self.start_markets()
-        self.start_traders()
+        self.start_trader()
         self.start_strategies()
         self.start_heartbeat()
 
     def stop(self):
         self.heartbeat.stop()
-        for strategy in self.strategies:
-            strategy.stop()
-        for trader in self.traders:
-            trader.stop()
+        self.strategy_engine.stop()
+        self.trader.stop()
         for market in self.markets:
             market.stop()
         self.event_engine.stop()
         self.running = False
+
+    def send_orders_and_cancel(self, orders, callback):
+        self.trader.send_and_cancel_orders(orders=orders, callback=callback)
