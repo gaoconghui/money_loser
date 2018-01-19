@@ -18,6 +18,7 @@ class BackTestingEngine(object):
         self.data_source = DataSource()
         self.kline_1min_gen_map = {}
         self.account = Account({"usdt": 100000})
+        self.charge = 0.2 / 100
 
         self.last_price = {"usdt": 1}
 
@@ -55,15 +56,17 @@ class BackTestingEngine(object):
         callback(bars)
 
     def limit_buy(self, symbol, price):
+        print "buy",price
         usdt_position = self.account.symbol_position("usdt")
         buy_count = usdt_position / price
         self.account.update_symbol("usdt", -usdt_position)
-        self.account.update_symbol(symbol, buy_count)
+        self.account.update_symbol(symbol, buy_count * (1 - self.charge))
 
     def limit_sell(self, symbol, price):
+        print "sell", price
         symbol_position = self.account.symbol_position(symbol)
         sell_money = symbol_position * price
-        self.account.update_symbol("usdt", sell_money)
+        self.account.update_symbol("usdt", sell_money * (1 - self.charge))
         self.account.update_symbol(symbol, -symbol_position)
 
     def start_test(self):
@@ -95,7 +98,7 @@ class DataSource(object):
 
     def load_1min_kline(self, symbol):
         if symbol not in self.kline_1min_cache:
-            self.kline_1min_cache[symbol] = get_kline(symbol=symbol, period="1min", size=2000)
+            self.kline_1min_cache[symbol] = get_kline(symbol=symbol, period="30min", size=2000)
         for b in self.kline_1min_cache[symbol]['data'][::-1]:
             bar = BarData()
             bar.symbol = symbol
