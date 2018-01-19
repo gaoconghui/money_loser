@@ -6,8 +6,8 @@ import datetime
 from collections import defaultdict
 
 from trader_v2.api import get_kline
-from trader_v2.strategy.strategy_two import StrategyTwo
-from trader_v2.trader_object import BarData
+from trader_v2.strategy.strategy_three import StrategyThree
+from trader_v2.trader_object import BarData, MarketTradeItem
 
 
 class BackTestingEngine(object):
@@ -17,7 +17,7 @@ class BackTestingEngine(object):
         self.kline_1min = defaultdict(list)
         self.data_source = DataSource()
         self.kline_1min_gen_map = {}
-        self.account = Account({"usdt": 100000})
+        self.account = Account({"usdt": 1300, "btcusdt": 0.1})
         self.charge = 0.2 / 100
 
         self.last_price = {"usdt": 1}
@@ -55,19 +55,21 @@ class BackTestingEngine(object):
             bars.append(self.kline_1min_gen_map[symbol].next())
         callback(bars)
 
-    def limit_buy(self, symbol, price):
-        print "buy",price
+    def limit_buy(self, symbol, price, count=None):
+        print "buy", price
         usdt_position = self.account.symbol_position("usdt")
-        buy_count = usdt_position / price
-        self.account.update_symbol("usdt", -usdt_position)
-        self.account.update_symbol(symbol, buy_count * (1 - self.charge))
+        if not count:
+            count = usdt_position / price
+        self.account.update_symbol("usdt", -count * price)
+        self.account.update_symbol(symbol, count * (1 - self.charge))
 
-    def limit_sell(self, symbol, price):
+    def limit_sell(self, symbol, price, count=None):
         print "sell", price
-        symbol_position = self.account.symbol_position(symbol)
-        sell_money = symbol_position * price
+        if not count:
+            count = self.account.symbol_position(symbol)
+        sell_money = count * price
         self.account.update_symbol("usdt", sell_money * (1 - self.charge))
-        self.account.update_symbol(symbol, -symbol_position)
+        self.account.update_symbol(symbol, -count)
 
     def start_test(self):
         for symbol in self.kline_1min.keys():
@@ -79,6 +81,16 @@ class BackTestingEngine(object):
             self.last_price[bar.symbol] = bar.close
             for callback in self.kline_1min[bar.symbol]:
                 callback(bar)
+            for callback in self.market_trade_map[bar.symbol]:
+                market_trade_item = MarketTradeItem(
+                    price=bar.close,
+                    amount=bar.amount,
+                    direction="sell",
+                    datetime=bar.datetime,
+                    symbol=bar.symbol,
+                    id=1
+                )
+                callback(market_trade_item)
 
     def stop(self):
         """
@@ -87,6 +99,7 @@ class BackTestingEngine(object):
         position = self.account.positions
         usdt = 0
         for k, v in position.iteritems():
+            print self.last_price[k]
             price = self.last_price[k]
             usdt += v * price
         print "last usdt price : {usdt}".format(usdt=usdt)
@@ -98,7 +111,7 @@ class DataSource(object):
 
     def load_1min_kline(self, symbol):
         if symbol not in self.kline_1min_cache:
-            self.kline_1min_cache[symbol] = get_kline(symbol=symbol, period="30min", size=2000)
+            self.kline_1min_cache[symbol] = get_kline(symbol=symbol, period="60min", size=2000)
         for b in self.kline_1min_cache[symbol]['data'][::-1]:
             bar = BarData()
             bar.symbol = symbol
@@ -108,6 +121,7 @@ class DataSource(object):
             bar.close = b['close']
             bar.amount = b['amount']
             bar.count = b['count']
+            print b
             bar.datetime = datetime.datetime.fromtimestamp(b['id'])
             yield bar
 
@@ -135,7 +149,8 @@ class NotSupportError(StandardError):
 
 if __name__ == '__main__':
     engine = BackTestingEngine()
-    strategy = StrategyTwo(engine, ["btcusdt"])
+    # strategy = StrategyTwo(engine, ["btcusdt"])
+    strategy = StrategyThree(engine, "btcusdt", 5, 0.01)
     strategy.start()
     engine.start_test()
     engine.stop()

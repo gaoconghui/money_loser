@@ -78,10 +78,10 @@ class StrategyEngine(object):
             callback(market_trade_item)
 
     # ----------------------交易部分---------------------------
-    def buy(self, symbol, price):
+    def limit_buy(self, symbol, price, count=None):
         pass
 
-    def sell(self, symbol, price):
+    def limit_sell(self, symbol, price, count=None):
         pass
 
     def append(self, strategy):
