@@ -59,7 +59,7 @@ class BarData(object):
         self.amount = EMPTY_FLOAT
 
     def __str__(self):
-        return "BarData : {symbol} , open:{open} , high:{high} , low:{low} , close:{close} , data:{datetime} , count:{count} , amount:{amount}".format(
+        return "BarData : {symbol} , open:{open} , high:{high} , low:{low} , close:{close} , date:{datetime} , count:{count} , amount:{amount}".format(
             **self.__dict__
         )
 
