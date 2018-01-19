@@ -77,6 +77,13 @@ class StrategyEngine(object):
         for callback in self.subscribe_map[type_]:
             callback(market_trade_item)
 
+    # ----------------------交易部分---------------------------
+    def buy(self, symbol, price):
+        pass
+
+    def sell(self, symbol, price):
+        pass
+
     def append(self, strategy):
         self.strategies.append(strategy)
 

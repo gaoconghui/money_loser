@@ -61,11 +61,9 @@ class StrategyTwo(StrategyBase):
             print self.bar_managers[symbol].bar
             _, _, hist = self.array_managers[symbol].macd(fast_period=12, slow_period=26, signal_period=9, array=True)
             if hist[-2] < 0 < hist[-1]:
-                print hist[-2], hist[-1]
-                print "buy"
+                self.strategy_engine.limit_buy(symbol=symbol, price=self.bar_managers[symbol].bar.close)
             if hist[-1] < 0 < hist[-2]:
-                print hist[-2], hist[-1]
-                print "sell"
+                self.strategy_engine.limit_sell(symbol=symbol, price=self.bar_managers[symbol].bar.close)
 
     def stop(self):
         StrategyBase.stop(self)
