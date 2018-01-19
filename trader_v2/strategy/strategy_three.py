@@ -3,12 +3,15 @@
 三号策略
 网格交易法，方法如下，起始10w
 初始买入5w，涨x%卖出5k，跌x%买入5k
+
+后记： 这个策略如果钱没有限制，回测起来效果还是不错的。
+但对于比特币之类的，很容易就能想到，如果一次性涨了很多，或者一次性跌了很多，就立马炸了。（止盈但是不止损，分分钟就会爆炸）
 """
 from trader_v2.strategy.base import StrategyBase
 
 
 class StrategyThree(StrategyBase):
-    __name__ = "strategy three"
+    __name__ = "strategy three （grid strategy）"
 
     def __init__(self, strategy_engine, symbol, x, per_count, base_price=None):
         super(StrategyThree, self).__init__(strategy_engine)
