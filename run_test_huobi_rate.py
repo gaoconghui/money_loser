@@ -6,9 +6,10 @@ import time
 
 import os
 
-from trader import password
-from trader.deal import HuobiTrader
-from trader.huobi import Huobi
+from trader_v2.account import Account
+from trader_v2.engine import EventEngine
+from trader_v2.market import HuobiMarket
+from trader_v2.trader import HuobiTrader
 
 _video_sch_dir = '%s/' % os.path.dirname(os.path.realpath(__file__))
 _filepath = os.path.dirname(sys.argv[0])
@@ -44,16 +45,18 @@ def init_log():
 if __name__ == '__main__':
     init_log()
     # 火币网数据获取
-    trader = HuobiTrader(access_key=password.access_key, secret_key=password.secret_key)
+    event_engine = EventEngine()
+    account = Account()
+    trader = HuobiTrader(event_engine=event_engine, account=account)
     logger.info("start test trader banalce test")
     logger.info("----------------------------------------------")
     for i in range(10):
         t1 = time.time()
-        trader.get_balance()
+        trader.update_position()
         logger.info("test trader get balalce time {t}".format(t=time.time() - t1))
     logger.info("----------------------------------------------")
     logger.info("test huobi websocket")
-    huobi = Huobi()
+    huobi = HuobiMarket(event_engine=event_engine)
 
 
     def parse_depth_recv(item):
@@ -61,6 +64,7 @@ if __name__ == '__main__':
 
 
     huobi.parse_depth_recv = parse_depth_recv
-    huobi.subscribe_depth("waxbtc")
-    huobi.subscribe_depth("waxeth")
+    huobi.parse_kline_recv = parse_depth_recv
+    huobi.subscribe_depth("ethusdt")
+    huobi.subscribe_1min_kline("ethusdt")
     huobi.start()
