@@ -190,8 +190,9 @@ class MainEngine(object):
 
     def start_strategies(self):
         self.strategy_engine = StrategyEngine(main_engine=self, event_engine=self.event_engine)
-        strategy = StrategyOne(self.strategy_engine, self.account, "wax")
-        self.strategy_engine.append(strategy)
+        for coin in ["wax", "tnb", "hsr"]:
+            strategy = StrategyOne(self.strategy_engine, self.account, coin)
+            self.strategy_engine.append(strategy)
         self.strategy_engine.start()
 
     def start_trader(self):
