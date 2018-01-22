@@ -6,7 +6,8 @@ macd
 import logging
 from functools import partial
 
-from trader_v2.strategy.base import StrategyBase, BarManager, ArrayManager
+from trader_v2.strategy.base import StrategyBase
+from trader_v2.strategy.util import BarManager, ArrayManager
 
 logger = logging.getLogger("strategy.strategy_two")
 

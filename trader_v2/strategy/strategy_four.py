@@ -4,7 +4,8 @@
 寻找市场上最具有潜力的垃圾币
 如果短时间内大跌，可以考虑买进
 """
-from trader_v2.strategy.base import StrategyBase, ArrayManagerDF
+from trader_v2.strategy.base import StrategyBase
+from trader_v2.strategy.util import ArrayManagerDF
 
 
 class StrategyFour(StrategyBase):
