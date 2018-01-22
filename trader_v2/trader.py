@@ -10,7 +10,6 @@ from threading import Thread
 
 from trader_v2 import secret_config
 from trader_v2.api import HuobiApi
-from trader_v2.event import EVENT_HUOBI_BALANCE, Event
 from trader_v2.util import ThreadWithReturnValue
 
 logger = logging.getLogger("trader.huobi")
@@ -30,6 +29,7 @@ class Trader(object):
         self.__job_queue = Queue()
 
     def start(self):
+        self.update_position()
         self.__processor.start()
 
     def process_event(self, event):
@@ -58,9 +58,9 @@ class Trader(object):
     def _inner_send_and_cancel_orders(self, orders):
         pass
 
-    def update_balance(self):
+    def update_position(self):
         """
-        更新持仓，并广播出去
+        更新持仓，并修改account
         :return: 
         """
         pass
@@ -77,7 +77,6 @@ class HuobiTrader(Trader):
         super(HuobiTrader, self).__init__(event_engine, account)
         self.huobi_api = HuobiApi(secret_key=secret_config.huobi_sectet_key,
                                   access_key=secret_config.huobi_access_key)
-        self.update_balance()
 
     def _inner_send_and_cancel_orders(self, orders):
         t1 = ThreadWithReturnValue(target=self.huobi_api.send_order, args=(orders[0],))
@@ -98,18 +97,14 @@ class HuobiTrader(Trader):
             logger.info("cancel orders error , {o1}  {o2}".format(o1=order_id1, o2=order_id2))
             result = False, False
         return result
-        # self.update_balance()
 
-    def update_balance(self):
+    def update_position(self):
         for i in range(3):
             result = self.huobi_api.get_balance()
             if result.get("status") == "ok":
                 balance = {item['currency']: item['balance'] for item in result['data']['list'] if
                            item.get("type") == "trade"}
-                event = Event(EVENT_HUOBI_BALANCE)
-                event.dict_ = {"data": balance}
-                self.event_engine.put(event)
-                return
+                self.account.init_position(balance)
 
 
 class HuobiDebugTrader(Trader):
