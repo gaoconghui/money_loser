@@ -69,3 +69,5 @@ if __name__ == '__main__':
     huobi.subscribe_depth("ethusdt")
     huobi.subscribe_1min_kline("ethusdt")
     huobi.start()
+    time.sleep(10)
+    huobi.stop()
