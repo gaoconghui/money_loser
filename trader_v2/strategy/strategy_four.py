@@ -8,8 +8,8 @@ from trader_v2.strategy.base import StrategyBase, ArrayManagerDF
 
 
 class StrategyFour(StrategyBase):
-    def __init__(self, strategy_engine, symbols, window=40):
-        super(StrategyFour, self).__init__(strategy_engine)
+    def __init__(self, strategy_engine, account, symbols, window=40):
+        super(StrategyFour, self).__init__(strategy_engine, account)
         self.symbols = symbols
         self.window = window
         self.array_map = {}

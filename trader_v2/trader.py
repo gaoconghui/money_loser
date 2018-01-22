@@ -21,8 +21,9 @@ class Trader(object):
     对外提供一系列交易接口，并内部异步执行后回调
     """
 
-    def __init__(self, event_engine):
+    def __init__(self, event_engine, account):
         self.event_engine = event_engine
+        self.account = account
         self.req_id = 0
         self.running = True
         self.__processor = Thread(target=self.__run)
@@ -71,9 +72,9 @@ class Trader(object):
 
 
 class HuobiTrader(Trader):
-    def __init__(self, event_engine):
+    def __init__(self, event_engine, account):
 
-        super(HuobiTrader, self).__init__(event_engine)
+        super(HuobiTrader, self).__init__(event_engine, account)
         self.huobi_api = HuobiApi(secret_key=secret_config.huobi_sectet_key,
                                   access_key=secret_config.huobi_access_key)
         self.update_balance()

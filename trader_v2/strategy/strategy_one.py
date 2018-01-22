@@ -18,8 +18,8 @@ class StrategyOne(StrategyBase):
 
     __name__ = "strategy one"
 
-    def __init__(self, strategy_engine, coin_name):
-        super(StrategyOne, self).__init__(strategy_engine)
+    def __init__(self, strategy_engine, account, coin_name):
+        super(StrategyOne, self).__init__(strategy_engine, account)
         self.coin_name = coin_name
         self.coin_btc_name = "%sbtc" % coin_name
         self.coin_eth_name = "%seth" % coin_name

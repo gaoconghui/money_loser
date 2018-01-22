@@ -13,8 +13,8 @@ from trader_v2.strategy.base import StrategyBase
 class StrategyThree(StrategyBase):
     __name__ = "strategy three （grid strategy）"
 
-    def __init__(self, strategy_engine, symbol, x, per_count, base_price=None):
-        super(StrategyThree, self).__init__(strategy_engine)
+    def __init__(self, strategy_engine, account, symbol, x, per_count, base_price=None):
+        super(StrategyThree, self).__init__(strategy_engine, account)
         self.symbol = symbol
         self.x = x / 100.0
         # 每次买入/卖出的份额

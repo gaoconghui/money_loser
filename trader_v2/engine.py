@@ -8,6 +8,7 @@ from Queue import Queue, Empty
 from collections import defaultdict
 from threading import Thread
 
+from trader_v2.account import Account
 from trader_v2.event import EVENT_TIMER, Event, EVENT_HEARTBEAT
 from trader_v2.market import HuobiMarket
 from trader_v2.strategy.strategy_engine import StrategyEngine
@@ -180,6 +181,7 @@ class MainEngine(object):
         self.strategy_engine = None
         self.heartbeat = HeartBeat(event_engine=self.event_engine, max_delay=200, close_func=self.stop)
         self.running = True
+        self.account = Account("huobi")
 
     def start_markets(self):
         huobi_market = HuobiMarket(self.event_engine)
@@ -188,12 +190,12 @@ class MainEngine(object):
 
     def start_strategies(self):
         self.strategy_engine = StrategyEngine(main_engine=self, event_engine=self.event_engine)
-        strategy = StrategyTwo(self.strategy_engine, "btcusdt")
+        strategy = StrategyTwo(self.strategy_engine, self.account, "btcusdt")
         self.strategy_engine.append(strategy)
         self.strategy_engine.start()
 
     def start_trader(self):
-        trader = HuobiDebugTrader(self.event_engine)
+        trader = HuobiDebugTrader(self.event_engine, self.account)
         trader.start()
         self.trader = trader
 

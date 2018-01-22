@@ -21,13 +21,13 @@ class StrategyTwo(StrategyBase):
 
     __name__ = "strategy two"
 
-    def __init__(self, event_engine, symbols):
+    def __init__(self, event_engine, account, symbols):
         """
         虽说支持传入多个symbol，但实际上只支持一个symbol，需要改进
         :param event_engine: 事件驱动引擎
         :param coin_name: 
         """
-        super(StrategyTwo, self).__init__(event_engine)
+        super(StrategyTwo, self).__init__(event_engine, account)
         if not isinstance(symbols, list):
             symbols = [symbols]
         self.symbols = symbols
