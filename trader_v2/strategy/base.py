@@ -14,7 +14,6 @@ class StrategyBase(object):
     def __init__(self, strategy_engine, account):
         self.strategy_engine = strategy_engine
         self.account = account
-        self.balance = {}
 
     def start(self):
         logger.info("start strategy {name}".format(name=self.__name__))

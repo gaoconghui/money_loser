@@ -14,10 +14,6 @@ EVENT_HUOBI_SUBSCRIBE_DEPTH = "huobi_subscribe_depth"
 EVENT_HUOBI_SUBSCRIBE_TRADE = "huobi_subscribe_trade"
 EVENT_HUOBI_SUBSCRIBE_1MIN_KLINE = "huobi_subscribe_1min_kline"
 
-# 火币网持仓
-# {"data": { coin : balance }}
-EVENT_HUOBI_BALANCE = "huobi_balance"
-
 # 查询火币网k线请求
 # {"data" : {"symbol" : symbol , "period" : "period"}}
 EVENT_HUOBI_REQUEST_KLINE = "huobi_request_kline"

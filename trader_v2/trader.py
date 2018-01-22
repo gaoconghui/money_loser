@@ -75,7 +75,7 @@ class HuobiTrader(Trader):
     def __init__(self, event_engine, account):
 
         super(HuobiTrader, self).__init__(event_engine, account)
-        self.huobi_api = HuobiApi(secret_key=secret_config.huobi_sectet_key,
+        self.huobi_api = HuobiApi(secret_key=secret_config.huobi_secret_key,
                                   access_key=secret_config.huobi_access_key)
 
     def _inner_send_and_cancel_orders(self, orders):
@@ -96,6 +96,7 @@ class HuobiTrader(Trader):
         except:
             logger.info("cancel orders error , {o1}  {o2}".format(o1=order_id1, o2=order_id2))
             result = False, False
+        self.update_position()
         return result
 
     def update_position(self):
@@ -105,6 +106,7 @@ class HuobiTrader(Trader):
                 balance = {item['currency']: item['balance'] for item in result['data']['list'] if
                            item.get("type") == "trade"}
                 self.account.init_position(balance)
+                return
 
 
 class HuobiDebugTrader(Trader):

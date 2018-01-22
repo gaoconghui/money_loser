@@ -4,6 +4,7 @@
 三方套利，思路如下：计算当前能直接能通过usdt买btc/eth 买coin所需的usdt成本，同时持有ethcoin以及btccoin，如果一边买入成本低于另一边卖出成本 deal
 """
 import logging
+import math
 
 from trader_v2.strategy.base import StrategyBase
 from trader_v2.trader_object import TradeItem, SellLimitOrder, BuyLimitOrder
@@ -37,6 +38,8 @@ class StrategyOne(StrategyBase):
         # 是否允许发单
         # 如果上一个订单还没返回 ，则不允许再次发送
         self.can_send_orders = True
+
+        self.orders_cache = [None, None]
 
     def start(self):
         StrategyBase.start(self)
@@ -75,12 +78,12 @@ class StrategyOne(StrategyBase):
     def check(self):
         if self.btc_chain_trade_bid and self.eth_chain_trade_ask:
             # 如果btc链卖价高于eth链买价
-            if self.btc_chain_trade_bid.price * 0.998 > self.eth_chain_trade_ask.price * 1.002:
+            if self.btc_chain_trade_bid.price * 0.997 > self.eth_chain_trade_ask.price * 1.003:
                 self.compute_earn_percent(self.btc_chain_trade_bid, self.eth_chain_trade_ask, self.coin_btc_name,
                                           self.coin_eth_name)
                 self.make_deal(self.coin_btc_name, self.coin_eth_name)
         if self.btc_chain_trade_ask and self.eth_chain_trade_bid:
-            if self.eth_chain_trade_bid.price * 0.998 > self.btc_chain_trade_ask.price * 1.002:
+            if self.eth_chain_trade_bid.price * 0.997 > self.btc_chain_trade_ask.price * 1.003:
                 self.compute_earn_percent(self.eth_chain_trade_bid, self.btc_chain_trade_ask, self.coin_eth_name,
                                           self.coin_btc_name)
                 self.make_deal(self.coin_eth_name, self.coin_btc_name)
@@ -107,32 +110,33 @@ class StrategyOne(StrategyBase):
         sell_price = self.depth_map[sell].bids[0].price
         buy_price = self.depth_map[buy].asks[0].price
 
-        # check balance
-        # if buy == self.coin_eth_name:
-        #     buy_max_count = math.floor(self.trader.balance("eth") / buy_price)
-        # elif buy == self.coin_btc_name:
-        #     buy_max_count = math.floor(self.trader.balance("btc") / buy_price)
-        # else:
-        #     logger.error("buy coin name error {b}".format(b=buy))
-        #     return
+        if buy == self.coin_eth_name:
+            buy_max_count = math.floor(self.account.position("eth") / buy_price)
+        elif buy == self.coin_btc_name:
+            buy_max_count = math.floor(self.account.position("btc") / buy_price)
+        else:
+            logger.error("buy coin error {b}".format(b=buy))
+            return
 
-        amount = min(self.depth_map[sell].bids[0].amount, self.depth_map[buy].asks.amount, 500)
+        # amount 应该为交易的最小精度
+        amount = min(self.depth_map[sell].bids[0].amount, self.depth_map[buy].asks[0].amount, buy_max_count,
+                     self.account.position(self.coin_name), 500)
         amount = int(amount)
         if amount < 1:
             logger.info("amount (c) < 1 ".format(c=amount))
             return
         sell_item = SellLimitOrder(symbol=sell, price=sell_price, amount=amount)
         buy_item = BuyLimitOrder(symbol=buy, price=buy_price, amount=amount)
-        self.strategy_engine.send_orders_and_cancel([sell_item, buy_item], callback=self.on_send_orders)
+        self.orders_cache = [sell_item, buy_item]
         self.can_send_orders = False
+        self.strategy_engine.send_orders_and_cancel([sell_item, buy_item], callback=self.on_send_orders)
 
     def on_send_orders(self, result):
-        pass
-        # self.can_send_orders = True
-        # orders = event.dict_['data']
-        # success_sell, success_buy = result
-        # logger.info("sell {sell} ({success_sell}), buy {buy} ({success_buy}) , stragety {status}".format(sell=orders[0],
-        #                                                                                                  buy=orders[1],
-        #                                                                                                  success_buy=success_buy,
-        #                                                                                                  success_sell=success_sell,
-        #                                                                                                  status=success_sell and success_buy))
+        self.can_send_orders = True
+        success_sell, success_buy = result
+        logger.info("sell {sell} ({success_sell}), buy {buy} ({success_buy}) , stragety {status}".format(
+            sell=self.orders_cache[0],
+            buy=self.orders_cache[1],
+            success_buy=success_buy,
+            success_sell=success_sell,
+            status=success_sell and success_buy))

@@ -12,8 +12,8 @@ from trader_v2.account import Account
 from trader_v2.event import EVENT_TIMER, Event, EVENT_HEARTBEAT
 from trader_v2.market import HuobiMarket
 from trader_v2.strategy.strategy_engine import StrategyEngine
-from trader_v2.strategy.strategy_two import StrategyTwo
-from trader_v2.trader import HuobiDebugTrader
+from trader_v2.strategy.strategy_one import StrategyOne
+from trader_v2.trader import HuobiTrader
 
 logger = logging.getLogger("engine")
 
@@ -190,12 +190,12 @@ class MainEngine(object):
 
     def start_strategies(self):
         self.strategy_engine = StrategyEngine(main_engine=self, event_engine=self.event_engine)
-        strategy = StrategyTwo(self.strategy_engine, self.account, "btcusdt")
+        strategy = StrategyOne(self.strategy_engine, self.account, "wax")
         self.strategy_engine.append(strategy)
         self.strategy_engine.start()
 
     def start_trader(self):
-        trader = HuobiDebugTrader(self.event_engine, self.account)
+        trader = HuobiTrader(self.event_engine, self.account)
         trader.start()
         self.trader = trader
 

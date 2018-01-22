@@ -5,7 +5,7 @@
 
 
 class Account(object):
-    def __init__(self, name):
+    def __init__(self, name=None):
         self.name = name
         self.position_map = {}
 
@@ -19,7 +19,10 @@ class Account(object):
         :param money: 
         :return: 
         """
-        position = self.position_map.get(symbol, 0)
+        if ("btc" in symbol or "eth" in symbol) and len(symbol) > 3:
+            symbol = symbol.replace("btc", "")
+            symbol = symbol.replace("eth", "")
+        position = self.position(symbol)
         balance = position + money
         if balance > 0:
             self.position_map[symbol] = balance
@@ -31,4 +34,7 @@ class Account(object):
         self.position_map[symbol] = position
 
     def position(self, symbol):
-        return self.position_map.get(symbol, 0)
+        if ("btc" in symbol or "eth" in symbol) and len(symbol) > 3:
+            symbol = symbol.replace("btc", "")
+            symbol = symbol.replace("eth", "")
+        return float(self.position_map.get(symbol, 0))
