@@ -7,6 +7,7 @@ import time
 import os
 
 from trader_v2.account import Account
+from trader_v2.api import timestamp
 from trader_v2.engine import EventEngine
 from trader_v2.market import HuobiMarket
 from trader_v2.trader import HuobiTrader
@@ -60,7 +61,7 @@ if __name__ == '__main__':
 
 
     def parse_depth_recv(item):
-        logger.info("time delay {t}".format(t=time.time() * 1000 - item.get("ts")))
+        logger.info("time delay {t}".format(t=timestamp()['data'] - item.get("ts")))
 
 
     huobi.parse_depth_recv = parse_depth_recv

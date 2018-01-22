@@ -423,6 +423,11 @@ def price(symbol):
         return 0
 
 
+def timestamp():
+    url = MARKET_URL + '/v1/common/timestamp'
+    return http_get_request(url, {})
+
+
 def show_balance_usdt(trader):
     balance = trader.get_balance()
     balance = {item['currency']: float(item['balance']) for item in balance['data']['list'] if
@@ -435,3 +440,7 @@ def show_balance_usdt(trader):
     balance_list.sort(key=lambda x: -x[1])
     for item in balance_list:
         print item
+
+
+if __name__ == '__main__':
+    print timestamp()['data']
