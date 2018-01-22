@@ -3,6 +3,7 @@ import logging
 
 import numpy as np
 import talib
+from pandas import DataFrame
 
 from trader_v2.trader_object import BarData
 
@@ -321,3 +322,56 @@ class ArrayManager(object):
         if array:
             return up, down
         return up[-1], down[-1]
+
+
+class ArrayManagerDF(object):
+    """
+    与ArrayManager功能类似，不过使用Dataframe实现
+    """
+
+    def __init__(self, size=100):
+        """Constructor"""
+        self.count = 0  # 缓存计数
+        self.size = size  # 缓存大小
+        self.inited = False  # True if count>=size
+
+        self.df = DataFrame(columns=("open", "high", "low", "close", "count", "amount"))
+
+    # ----------------------------------------------------------------------
+    def update_bar(self, bar):
+        """更新K线"""
+        self.count += 1
+        if not self.inited and self.count >= self.size:
+            self.inited = True
+
+        self.df[bar.datetime] = (bar.open, bar.high, bar.low, bar.close, bar.count.bar.amount)
+        self.df = self.df[-self.size:-1]
+
+    # ----------------------------------------------------------------------
+    @property
+    def open(self):
+        """获取开盘价序列"""
+        return self.df['open']
+
+    # ----------------------------------------------------------------------
+    @property
+    def high(self):
+        """获取最高价序列"""
+        return self.df['high']
+
+    # ----------------------------------------------------------------------
+    @property
+    def low(self):
+        """获取最低价序列"""
+        return self.df['low']
+
+    # ----------------------------------------------------------------------
+    @property
+    def close(self):
+        """获取收盘价序列"""
+        return self.df['close']
+
+    # ----------------------------------------------------------------------
+    @property
+    def amount(self):
+        return self.df['amount']
