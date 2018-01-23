@@ -11,7 +11,8 @@ import logging
 import urllib
 import urlparse
 
-import requests
+import requests as ori_requests
+requests = ori_requests.session()
 
 # timeout in 5 seconds:
 from trader_v2.trader_object import order_type
@@ -50,7 +51,7 @@ def http_get_request(url, params, add_to_headers=None):
         headers.update(add_to_headers)
     postdata = urllib.urlencode(params)
     try:
-        response = requests.get(url, postdata, headers=headers, timeout=TIMEOUT)
+        response = requests.get(url, params=postdata, headers=headers, timeout=TIMEOUT)
         if response.status_code == 200:
             return response.json()
         else:
@@ -72,7 +73,7 @@ def http_post_request(url, params, add_to_headers=None):
         headers.update(add_to_headers)
     postdata = json.dumps(params)
     try:
-        response = requests.post(url, postdata, headers=headers, timeout=TIMEOUT)
+        response = requests.post(url, params=postdata, headers=headers, timeout=TIMEOUT)
         if response.status_code == 200:
             return response.json()
         else:
