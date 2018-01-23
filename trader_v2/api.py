@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 TIMEOUT = 3
 API_HOST = "api.huobi.pro"
-SCHEME = 'https'
+SCHEME = 'http'
 # language setting: 'zh-CN', 'en':
 LANG = 'zh-CN'
 DEFAULT_GET_HEADERS = {
@@ -38,7 +38,7 @@ DEFAULT_POST_HEADERS = {
 }
 
 # API 请求地址
-MARKET_URL = TRADE_URL = "https://api.huobi.pro"
+MARKET_URL = TRADE_URL = "http://api.huobi.pro"
 
 
 # 各种请求,获取数据方式
