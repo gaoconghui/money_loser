@@ -11,10 +11,10 @@ import logging
 import urllib
 import urlparse
 
-import requests as ori_requests
-requests = ori_requests.session()
-
+import requests
 # timeout in 5 seconds:
+from requests.adapters import HTTPAdapter
+
 from trader_v2.trader_object import order_type
 from trader_v2.util import timeme, ThreadWithReturnValue
 
@@ -40,6 +40,8 @@ DEFAULT_POST_HEADERS = {
 # API 请求地址
 MARKET_URL = TRADE_URL = "http://api.huobi.pro"
 
+adapter = HTTPAdapter()
+
 
 # 各种请求,获取数据方式
 def http_get_request(url, params, add_to_headers=None):
@@ -50,8 +52,11 @@ def http_get_request(url, params, add_to_headers=None):
     if add_to_headers:
         headers.update(add_to_headers)
     postdata = urllib.urlencode(params)
+    s = requests.session()
+    s.mount('https://', adapter=adapter)
+    s.mount('http://', adapter=adapter)
     try:
-        response = requests.get(url, params=postdata, headers=headers, timeout=TIMEOUT)
+        response = s.get(url, params=postdata, headers=headers, timeout=TIMEOUT)
         if response.status_code == 200:
             return response.json()
         else:
@@ -72,8 +77,11 @@ def http_post_request(url, params, add_to_headers=None):
     if add_to_headers:
         headers.update(add_to_headers)
     postdata = json.dumps(params)
+    s = requests.session()
+    s.mount('https://', adapter=adapter)
+    s.mount('http://', adapter=adapter)
     try:
-        response = requests.post(url, params=postdata, headers=headers, timeout=TIMEOUT)
+        response = s.post(url, params=postdata, headers=headers, timeout=TIMEOUT)
         if response.status_code == 200:
             return response.json()
         else:
@@ -444,4 +452,9 @@ def show_balance_usdt(trader):
 
 
 if __name__ == '__main__':
+    import time
+
     print timestamp()['data']
+    t1 = time.time()
+    print get_depth("waxbtc", depth_type="step0")
+    print time.time() - t1
