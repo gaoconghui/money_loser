@@ -81,7 +81,7 @@ def http_post_request(url, params, add_to_headers=None):
     s.mount('https://', adapter=adapter)
     s.mount('http://', adapter=adapter)
     try:
-        response = s.post(url, params=postdata, headers=headers, timeout=TIMEOUT)
+        response = s.post(url, data=postdata, headers=headers, timeout=TIMEOUT)
         if response.status_code == 200:
             return response.json()
         else:
