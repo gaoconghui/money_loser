@@ -7,6 +7,7 @@ from collections import defaultdict
 from trader_v2.event import Event, EVENT_HUOBI_SUBSCRIBE_TRADE, EVENT_HUOBI_MARKET_DETAIL_PRE, \
     EVENT_HUOBI_SUBSCRIBE_DEPTH, EVENT_HUOBI_DEPTH_PRE, EVENT_HUOBI_SUBSCRIBE_1MIN_KLINE, EVENT_HUOBI_KLINE_PRE, \
     EVENT_HUOBI_REQUEST_KLINE, EVENT_HUOBI_RESPONSE_KLINE_PRE
+from trader_v2.trader_object import BuyLimitOrder, SellLimitOrder
 
 
 class StrategyEngine(object):
@@ -16,10 +17,6 @@ class StrategyEngine(object):
         self.strategies = []
 
         self.subscribe_map = defaultdict(list)
-
-    # --------------------trader 相关接口---------------------
-    def send_orders_and_cancel(self, orders, callback):
-        self.main_engine.send_orders_and_cancel(orders, callback)
 
     # --------------------订阅相关接口---------------------
     def subscribe_market_trade(self, symbol, callback):
@@ -78,11 +75,42 @@ class StrategyEngine(object):
             callback(market_trade_item)
 
     # ----------------------交易部分---------------------------
-    def limit_buy(self, symbol, price, count=None):
-        pass
+    def limit_buy(self, symbol, price, count):
+        """
+        下个限价买单，不管是否成交
+        :return: 限价买单的order id
+        """
+        buy_item = BuyLimitOrder(symbol=symbol, price=price, amount=count)
+        return self.main_engine.send_order(buy_item)
 
-    def limit_sell(self, symbol, price, count=None):
-        pass
+    def limit_sell(self, symbol, price, count):
+        """
+        下一个限价卖单，不管是否成交
+        :return: 限价卖单的order id
+        """
+        sell_item = SellLimitOrder(symbol=symbol, price=price, amount=count)
+        return self.main_engine.send_order(sell_item)
+
+    def cancel_order(self, order_id, callback=None):
+        """
+        取消订单
+        :param order_ids: list of order id
+        :param callback: 回调
+        :return: 
+        """
+        self.main_engine.cancel_order(order_id, callback)
+
+    def query_order(self, order_id, callback=None):
+        """
+        查询一个订单信息
+        :param order_id: 订单id
+        :param callback: 回调
+        :return: 
+        """
+        self.main_engine.query_order(order_id, callback)
+
+    def send_orders_and_cancel(self, orders, callback):
+        self.main_engine.send_orders_and_cancel(orders, callback)
 
     def append(self, strategy):
         self.strategies.append(strategy)

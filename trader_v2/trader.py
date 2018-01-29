@@ -27,6 +27,7 @@ class Trader(object):
         self.running = True
         self.__processor = Thread(target=self.__run)
         self.__job_queue = Queue()
+        self.__job_id = 0
 
     def start(self):
         self.update_position()
@@ -55,7 +56,48 @@ class Trader(object):
             "kwargs": {"orders": orders, "callback": callback},
         })
 
+    def send_order(self, order):
+        self.__job_id += 1
+        _id = self.__job_id
+        self.__job_queue.put({
+            "func": self._inner_send_order,
+            "kwargs": {"order": order, "job_id": _id}
+        })
+
+    def cancel_order(self, job_id, callback):
+        self.__job_queue.put({
+            "func": self._inner_cancel_order,
+            "kwargs": {"job_id": job_id, "callback": callback}
+        })
+
+    def query_order(self, job_id, callback):
+        self.__job_queue.put({
+            "func": self._inner_query_order,
+            "kwargs": {"job_id": job_id, "callback": callback}
+        })
+
     def _inner_send_and_cancel_orders(self, orders):
+        """
+        下单后立马删除
+        """
+        pass
+
+    def _inner_send_order(self, order, job_id):
+        """
+        发送一个订单，并把订单与job_id关联起来，之后可以根据job_id查询到这个order
+        """
+        pass
+
+    def _inner_cancel_order(self, job_id):
+        """
+        根据内部的job_id删除一个order
+        """
+        pass
+
+    def _inner_query_order(self, job_id):
+        """
+        根据内部job_id查询一个order
+        """
         pass
 
     def update_position(self):
@@ -77,6 +119,8 @@ class HuobiTrader(Trader):
         super(HuobiTrader, self).__init__(event_engine, account)
         self.huobi_api = HuobiApi(secret_key=secret_config.huobi_secret_key,
                                   access_key=secret_config.huobi_access_key)
+        # 对job_id 与外部订单的映射
+        self.job_order_map = {}
 
     def _inner_send_and_cancel_orders(self, orders):
         t1 = ThreadWithReturnValue(target=self.huobi_api.send_order, args=(orders[0],))
@@ -98,6 +142,22 @@ class HuobiTrader(Trader):
             result = False, False
         self.update_position()
         return result
+
+    def _inner_send_order(self, order, job_id):
+        result = self.huobi_api.send_order(order)
+        self.job_order_map[job_id] = result
+
+    def _inner_cancel_order(self, job_id):
+        if job_id in self.job_order_map:
+            order_id = self.job_order_map[job_id]
+            return job_id, self.huobi_api.cancel_orders(order_id)
+        return job_id, None
+
+    def _inner_query_order(self, job_id):
+        if job_id in self.job_order_map:
+            order_id = self.job_order_map[job_id]
+            return job_id, self.huobi_api.order_info(order_id)
+        return job_id, None
 
     def update_position(self):
         for i in range(3):
