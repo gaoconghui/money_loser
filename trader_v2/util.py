@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
+import heapq
 import logging
+import time
 from functools import wraps
 from threading import Thread
-
-import time
 
 logger = logging.getLogger("util")
 
@@ -63,3 +63,48 @@ class Cache(object):
     def clean_cache(self):
         self.__cache = {}
         self.__dedup = set()
+
+
+class DelayJobQueue(object):
+    """
+    延迟执行任务队列
+    q = DelayJobQueue()
+    q.add(task,at=time.time() + 10) 
+    q.pop_ready() # None
+    # 10秒后
+    q.pop_ready() # task
+    """
+
+    def __init__(self):
+        self._tasks = []
+
+    def add(self, task, at=None):
+        """
+        增加任务
+        :param task: 任务
+        :param at: 执行时间
+        :return:
+        """
+        if not at:
+            at = time.time()
+        heapq.heappush(self._tasks, (at, task))
+
+    def pop_ready(self):
+        """
+        pop 应该需要执行的任务
+        :return:
+        """
+        ready_tasks = []
+        while self._tasks and self._tasks[0][0] < time.time():
+            try:
+                task = self._pop_next()
+            except KeyError:
+                break
+            ready_tasks.append(task)
+        return ready_tasks
+
+    def _pop_next(self):
+        if not self._tasks:
+            raise KeyError('pop from an empty DelayedTaskQueue')
+        at, task = heapq.heappop(self._tasks)
+        return task
