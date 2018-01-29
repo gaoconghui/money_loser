@@ -15,6 +15,10 @@ from trader_v2.strategy.util import split_symbol
 
 
 class StrategyThree(StrategyBase):
+    """
+    网格交易策略
+    因为下的单都是限价单，且挂的是高价卖单，低价买单，所以可以在基准确定的时候提前下单。
+    """
     __name__ = "strategy three （grid strategy）"
 
     def __init__(self, strategy_engine, account, symbol, x, per_count, base_price=None):
@@ -30,6 +34,9 @@ class StrategyThree(StrategyBase):
         self.last_trade_price = None
         self.ready = False
         self.base_currency, self.quote_currency = split_symbol(symbol)
+
+        self.buy_order_id = None
+        self.sell_order_id = None
 
     def start(self):
         StrategyBase.start(self)
@@ -64,3 +71,29 @@ class StrategyThree(StrategyBase):
                 return
             self.strategy_engine.limit_sell(self.symbol, self.last_trade_price, sell_count)
             self.base_price = self.last_trade_price
+
+    def on_base_change(self):
+        """
+        在基准价格改变时调用这个方法
+        会先取消掉之前下的两个单（应该只有一个能成功执行），根据基准价格下两个新单
+        :return: 
+        """
+        # 取消之前下的单
+        if self.buy_order_id:
+            self.strategy_engine.cancel_order(self.buy_order_id)
+        if self.sell_order_id:
+            self.strategy_engine.cancel_order(self.sell_order_id)
+        # 计算新单价格并下单
+        low_price = min(self.base_price * (1 - self.x), self.last_trade_price)
+        high_price = max(self.base_price * (1 + self.x), self.last_trade_price)
+        buy_low_count = int(min(self.per_count, self.account.position(self.quote_currency) / low_price))
+        sell_high_count = int(min(self.per_count, self.account.position(self.base_currency)))
+        self.buy_order_id = self.strategy_engine.limit_buy(self.symbol, low_price, buy_low_count)
+        self.sell_order_id = self.strategy_engine.limit_sell(self.symbol, high_price, sell_high_count)
+
+    def stop(self):
+        """
+        保存所有的数据
+        :return: 
+        """
+        StrategyBase.stop(self)
