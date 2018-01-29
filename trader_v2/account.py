@@ -21,8 +21,8 @@ class Account(object):
         """
         position = self.position(symbol)
         balance = position + money
+        self.position_map[symbol] = balance
         if balance > 0:
-            self.position_map[symbol] = balance
             return True
         else:
             return False
