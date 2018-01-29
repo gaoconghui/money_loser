@@ -15,6 +15,30 @@ from trader_v2.util import ThreadWithReturnValue
 logger = logging.getLogger("trader.huobi")
 
 
+class Querier(object):
+    """
+    查询器，对订单进行跟踪，如果订单状态改变则给予通知
+    
+    为什么不只在用主引擎的定时器机制，去调用trader的query接口实现这个功能呢？
+    答：trader中用processor的线程实现了下单等环节的异步执行，将trader processor用以查询，势必会把查询任务加入到processor中，
+    而processor虽然是异步执行，但对他的期望是下单后立马执行，查询显然会拖慢这个节奏，故单独开一个线程。
+    """
+
+    def __init__(self):
+        self.running = True
+        self.__processor = Thread(target=self.__run)
+        self.__query_jobs = []
+
+    def start(self):
+        self.__processor.start()
+
+    def stop(self):
+        self.running = True
+
+    def __run(self):
+        pass
+
+
 class Trader(object):
     """
     对外提供一系列交易接口，并内部异步执行后回调
