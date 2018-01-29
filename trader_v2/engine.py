@@ -12,7 +12,7 @@ from trader_v2.account import Account
 from trader_v2.event import EVENT_TIMER, Event, EVENT_HEARTBEAT
 from trader_v2.market import HuobiMarket
 from trader_v2.strategy.strategy_engine import StrategyEngine
-from trader_v2.strategy.strategy_one import StrategyOne
+from trader_v2.strategy.strategy_three import StrategyThree
 from trader_v2.trader import HuobiTrader
 
 logger = logging.getLogger("engine")
@@ -190,9 +190,13 @@ class MainEngine(object):
 
     def start_strategies(self):
         self.strategy_engine = StrategyEngine(main_engine=self, event_engine=self.event_engine)
-        for coin in ["wax", "tnb", "hsr"]:
-            strategy = StrategyOne(self.strategy_engine, self.account, coin)
-            self.strategy_engine.append(strategy)
+        # 启动一号三方套利策略
+        # for coin in ["wax", "tnb", "hsr"]:
+        #     strategy = StrategyOne(self.strategy_engine, self.account, coin)
+        #     self.strategy_engine.append(strategy)
+        # 三号网格策略
+        strategy = StrategyThree(self.strategy_engine, self.account, symbol="swftcbtc", x=10, per_count=2500)
+        self.strategy_engine.append(strategy)
         self.strategy_engine.start()
 
     def start_trader(self):
