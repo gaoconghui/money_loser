@@ -14,10 +14,11 @@ logger = logging.getLogger("strategy.strategy_two")
 
 class StrategyTwo(StrategyBase):
     """
-    二号策略
+    二号策略，金叉买入死叉卖出
     kline 获取，huobi给的跟自己算的有点出入，但大体差的不多。
     启动的时候会获取一次kline，怕之后自己算的跟一开始启动时候获取的有出入，决定都使用huobi给的kline，如果碰到问题了再说好了
     回测结果：没有手续费的时候效果不错，但是手续费太高了，加完手续费亏损太多。
+    如果手续费有办法得到很大的减免的话，这个策略还是可以的。
     """
 
     __name__ = "strategy two"
