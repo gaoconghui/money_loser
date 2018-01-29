@@ -19,9 +19,6 @@ class Account(object):
         :param money: 
         :return: 
         """
-        if ("btc" in symbol or "eth" in symbol) and len(symbol) > 3:
-            symbol = symbol.replace("btc", "")
-            symbol = symbol.replace("eth", "")
         position = self.position(symbol)
         balance = position + money
         if balance > 0:
@@ -34,7 +31,14 @@ class Account(object):
         self.position_map[symbol] = position
 
     def position(self, symbol):
-        if ("btc" in symbol or "eth" in symbol) and len(symbol) > 3:
-            symbol = symbol.replace("btc", "")
-            symbol = symbol.replace("eth", "")
+        """
+        获取持仓数据，usdt也属于一种持仓
+        :param symbol: 
+        :return: 
+        """
         return float(self.position_map.get(symbol, 0))
+
+    def copy(self):
+        account = Account()
+        account.init_position(self.position_map.copy())
+        return account

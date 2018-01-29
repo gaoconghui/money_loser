@@ -3,24 +3,38 @@
 回测系统，需要实现strategy_engine的所有方法，用于代替strategy_engine
 """
 import datetime
+import logging
 from collections import defaultdict
 
-from trader_v2.api import get_kline
+from empyrical import alpha_beta, sharpe_ratio, max_drawdown
+from pandas import DataFrame
+
+from trader_v2.account import Account
+from trader_v2.api_wrapper import get_kline_from_mongo
 from trader_v2.strategy.strategy_three import StrategyThree
+from trader_v2.strategy.util import split_symbol
 from trader_v2.trader_object import BarData, MarketTradeItem
+
+logger = logging.getLogger("strategy.back_testing")
+logger.addHandler(logging.StreamHandler())
+logger.setLevel(logging.DEBUG)
 
 
 class BackTestingEngine(object):
-    def __init__(self):
+    def __init__(self, account):
         self.market_trade_map = defaultdict(list)
         self.depth_map = defaultdict(list)
         self.kline_1min = defaultdict(list)
         self.data_source = DataSource()
         self.kline_1min_gen_map = {}
-        self.account = Account({"usdt": 1300, "btcusdt": 0.1})
+        self.account = account
+        self.start_account = account.copy()
         self.charge = 0.2 / 100
 
-        self.last_price = {"usdt": 1}
+        self.now_price = {"usdt": 1, "btcusdt": 10000}
+        self.now_date = None
+
+        self.stat = DataFrame(columns=["strategy_balance", "market_balance"])
 
     def send_orders_and_cancel(self, orders, callback):
         """
@@ -56,31 +70,66 @@ class BackTestingEngine(object):
         callback(bars)
 
     def limit_buy(self, symbol, price, count=None):
-        print "buy", price
-        usdt_position = self.account.symbol_position("usdt")
+        """
+        限价买
+        """
+        # 本币单位为usdt
+        base, quote = split_symbol(symbol)
+        quote_position = self.account.position(quote)
         if not count:
-            count = usdt_position / price
-        self.account.update_symbol("usdt", -count * price)
-        self.account.update_symbol(symbol, count * (1 - self.charge))
+            count = quote_position / price
+        bo1 = self.account.trade(quote, -count * price)
+        bo2 = self.account.trade(base, count * (1 - self.charge))
+        logger.debug(
+            "buy limit , symbol : {symbol} , price : {price} ,count:{count}, success bo : {bo1} , {bo2}".format(
+                symbol=symbol,
+                count=count, price=price, bo1=bo1,
+                bo2=bo2))
 
     def limit_sell(self, symbol, price, count=None):
-        print "sell", price
+        base, quote = split_symbol(symbol)
         if not count:
-            count = self.account.symbol_position(symbol)
+            count = self.account.position(base)
         sell_money = count * price
-        self.account.update_symbol("usdt", sell_money * (1 - self.charge))
-        self.account.update_symbol(symbol, -count)
+        bo1 = self.account.trade(quote, sell_money * (1 - self.charge))
+        bo2 = self.account.trade(base, -count)
+        logger.debug(
+            "sell limit , symbol : {symbol} , price : {price}, count:{count}, success bo : {bo1} , {bo2}".format(
+                symbol=symbol, count=count,
+                price=price, bo1=bo1,
+                bo2=bo2))
+
+    def calculate_balance(self):
+        """
+        每轮结束后，计算持仓价值以及初始价值现值
+        :return: 
+        """
+        usdt_strategy = 0
+        usdt_market = 0
+        for k, v in self.account.position_map.iteritems():
+            price = self.usdt_price(k)
+            usdt_strategy += v * price
+        for k, v in self.start_account.position_map.iteritems():
+            price = self.usdt_price(k)
+            usdt_market += v * price
+
+        self.stat.loc[self.now_date] = usdt_strategy, usdt_market
 
     def start_test(self):
+        # 获取数据源
         for symbol in self.kline_1min.keys():
             if symbol not in self.kline_1min_gen_map:
                 self.kline_1min_gen_map[symbol] = self.data_source.load_1min_kline(symbol)
         all_kline = sum([list(item) for item in self.kline_1min_gen_map.values()], [])
         all_kline.sort(key=lambda x: x.datetime)
+        # 开始输入回测数据
         for bar in all_kline:
-            self.last_price[bar.symbol] = bar.close
+            self.now_date = bar.datetime
+            self.now_price[bar.symbol] = bar.close
+            # 返回k线
             for callback in self.kline_1min[bar.symbol]:
                 callback(bar)
+            # 返回交易数据（不过交易数据是假的）
             for callback in self.market_trade_map[bar.symbol]:
                 market_trade_item = MarketTradeItem(
                     price=bar.close,
@@ -91,18 +140,53 @@ class BackTestingEngine(object):
                     id=1
                 )
                 callback(market_trade_item)
+            self.calculate_balance()
 
     def stop(self):
         """
         清算
         """
-        position = self.account.positions
+        position = self.account.position_map
         usdt = 0
+        # 结算
         for k, v in position.iteritems():
-            print self.last_price[k]
-            price = self.last_price[k]
-            usdt += v * price
-        print "last usdt price : {usdt}".format(usdt=usdt)
+            # 如果k能直接换算为usdt
+            usdt += v * self.usdt_price(k)
+        logger.info("last usdt price : {usdt}".format(usdt=usdt))
+
+        # 计算每日收益率
+        self.stat["strategy_rate"] = (self.stat["strategy_balance"] - self.stat["strategy_balance"].shift(1)) / \
+                                     self.stat["strategy_balance"].shift(1)
+        self.stat["market_rate"] = (self.stat["market_balance"] - self.stat["market_balance"].shift(1)) / \
+                                   self.stat["market_balance"].shift(1)
+
+        sharpe = sharpe_ratio(self.stat["strategy_rate"], self.stat["market_rate"])
+        alaph, beta = alpha_beta(self.stat["strategy_rate"], self.stat["market_rate"])
+        max_dowm = max_drawdown(self.stat["strategy_rate"])
+
+        logger.info("-----------------------stat-------------------------")
+        logger.info("夏普率(未换算天与年) : {sharpe}".format(sharpe=sharpe))
+        logger.info("alaph : {alaph} , beta : {beta}".format(alaph=alaph, beta=beta))
+        logger.info("最大回撤 {down}".format(down=max_dowm))
+
+        import matplotlib.pylab as plt
+        plt.plot(self.stat['strategy_balance'], color='r')
+        plt.plot(self.stat['market_balance'], color='g')
+        plt.show()
+        print self.stat.tail(5)
+        print self.stat.head(5)
+
+    def usdt_price(self, coin):
+        if coin in self.now_price:
+            return self.now_price[coin]
+        # 如果可以直接转换为usdt
+        coin_usdt = coin + "usdt"
+        if coin_usdt in self.now_price:
+            return self.now_price[coin_usdt]
+        coin_btc = coin + "btc"
+        if coin_btc in self.now_price:
+            return self.now_price[coin_btc] * self.usdt_price("btc")
+        raise ValueError("can not get price of {coin}".format(coin=coin))
 
 
 class DataSource(object):
@@ -111,8 +195,8 @@ class DataSource(object):
 
     def load_1min_kline(self, symbol):
         if symbol not in self.kline_1min_cache:
-            self.kline_1min_cache[symbol] = get_kline(symbol=symbol, period="60min", size=2000)
-        for b in self.kline_1min_cache[symbol]['data'][::-1]:
+            self.kline_1min_cache[symbol] = get_kline_from_mongo(symbol=symbol, period="60min", size=2000)
+        for b in self.kline_1min_cache[symbol]:
             bar = BarData()
             bar.symbol = symbol
             bar.open = b['open']
@@ -121,26 +205,8 @@ class DataSource(object):
             bar.close = b['close']
             bar.amount = b['amount']
             bar.count = b['count']
-            print b
-            bar.datetime = datetime.datetime.fromtimestamp(b['id'])
+            bar.datetime = datetime.datetime.fromtimestamp(b['ts'])
             yield bar
-
-
-class Account(object):
-    def __init__(self, init_positions):
-        self.positions = init_positions
-
-    def update_symbol(self, symbol, count):
-        if symbol not in self.positions:
-            self.positions[symbol] = 0
-        if count + self.positions[symbol] < 0:
-            print "position {symbol} low {count}".format(symbol=symbol, count=count)
-            # return False
-        self.positions[symbol] += count
-        # return True
-
-    def symbol_position(self, symbol):
-        return self.positions.get(symbol, 0)
 
 
 class NotSupportError(StandardError):
@@ -148,9 +214,13 @@ class NotSupportError(StandardError):
 
 
 if __name__ == '__main__':
-    engine = BackTestingEngine()
+    account = Account()
+    account.init_position({"btc": 0.1, "swftc": 50000})
+    # account.init_position({"usdt": 1300, "btc": 0.1})
+    engine = BackTestingEngine(account)
     # strategy = StrategyTwo(engine, ["btcusdt"])
-    strategy = StrategyThree(engine, "btcusdt", 5, 0.01)
+    strategy = StrategyThree(engine, account, symbol="swftcbtc", x=10, per_count=15000)
     strategy.start()
     engine.start_test()
     engine.stop()
+    print account.position_map
