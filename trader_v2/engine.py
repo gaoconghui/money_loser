@@ -31,7 +31,7 @@ class EventEngine(object):
         self.__thread = Thread(target=self.__run)
 
         # 计时器，用于触发计时器事件
-        self.__timer = Thread(target=self.__runTimer)
+        self.__timer = Thread(target=self.__run_timer)
         # 计时器工作状态
         self.__timer_active = False
         self.__timer_sleep = 1
@@ -56,7 +56,7 @@ class EventEngine(object):
         if self.__general_handlers:
             [handler(event) for handler in self.__general_handlers]
 
-    def __runTimer(self):
+    def __run_timer(self):
         while self.__timer_active:
             event = Event(type_=EVENT_TIMER)
 
@@ -195,7 +195,7 @@ class MainEngine(object):
         #     strategy = StrategyOne(self.strategy_engine, self.account, coin)
         #     self.strategy_engine.append(strategy)
         # 三号网格策略
-        strategy = StrategyThree(self.strategy_engine, self.account, symbol="swftcbtc", x=10, per_count=2500)
+        strategy = StrategyThree(self.strategy_engine, self.account, symbol="swftcbtc", x=10, per_count=1)
         self.strategy_engine.append(strategy)
         self.strategy_engine.start()
 
