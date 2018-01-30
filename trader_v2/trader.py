@@ -186,6 +186,10 @@ class HuobiTrader(Trader):
         self.order_job_map = {}
         self.job_callback_map = {}
 
+    def start(self):
+        Trader.start(self)
+        self.order_querier.start()
+
     def _inner_send_and_cancel_orders(self, orders):
         t1 = ThreadWithReturnValue(target=self.huobi_api.send_order, args=(orders[0],))
         t2 = ThreadWithReturnValue(target=self.huobi_api.send_order, args=(orders[1],))
@@ -217,7 +221,7 @@ class HuobiTrader(Trader):
     def _inner_cancel_order(self, job_id):
         if job_id in self.job_order_map:
             order_id = self.job_order_map[job_id]
-            return job_id, self.huobi_api.cancel_orders(order_id)
+            return job_id, self.huobi_api.cancel_order(order_id)
         return job_id, None
 
     def _inner_query_order(self, job_id):
