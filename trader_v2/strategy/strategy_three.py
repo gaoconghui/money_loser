@@ -94,8 +94,12 @@ class StrategyThree(StrategyBase):
         high_price = max(self.base_price * (1 + self.x), self.last_trade_price)
         buy_low_count = int(min(self.per_count, self.account.position(self.quote_currency) / low_price))
         sell_high_count = int(min(self.per_count, self.account.position(self.base_currency)))
+        logger.info("send limit buy order , {symbol} price: {p} , count:{c}".format(symbol=self.symbol, p=low_price,
+                                                                                    c=buy_low_count))
         self.buy_order_id = self.strategy_engine.limit_buy(self.symbol, low_price, buy_low_count,
                                                            complete_callback=self.order_deal)
+        logger.info("send limit sell order , {symbol} price: {p} , count:{c}".format(symbol=self.symbol, p=high_price,
+                                                                                     c=sell_high_count))
         self.sell_order_id = self.strategy_engine.limit_sell(self.symbol, high_price, sell_high_count,
                                                              complete_callback=self.order_deal)
 
