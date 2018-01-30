@@ -177,7 +177,7 @@ class HuobiApi(object):
         url = '/v1/order/orders/place'
         result = self._api_key_post(params, url)
         if result.get("status", "") != "ok":
-            logger.error("send order error , {s}".format(s=json.dumps(result)))
+            logger.error("send order error , {s} , order item : {item}".format(s=json.dumps(result), item=order_item))
         return result.get("data")
 
     # 撤销订单
@@ -452,9 +452,10 @@ def show_balance_usdt(trader):
 
 
 if __name__ == '__main__':
-    import time
-
-    print timestamp()['data']
-    t1 = time.time()
-    print get_depth("waxbtc", depth_type="step0")
-    print time.time() - t1
+    # import time
+    #
+    # print timestamp()['data']
+    # t1 = time.time()
+    # print get_depth("waxbtc", depth_type="step0")
+    # print time.time() - t1
+    print get_symbols()
