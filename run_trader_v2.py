@@ -38,6 +38,10 @@ def init_log():
     logger.addHandler(sh)
     logger.setLevel(logging.DEBUG)
 
+    # ignore urllib3 log
+    urllib3_logger = logging.getLogger("urllib3")
+    urllib3_logger.setLevel(logging.WARNING)
+
 
 init_log()
 engine = MainEngine()
