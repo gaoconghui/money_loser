@@ -75,21 +75,21 @@ class StrategyEngine(object):
             callback(market_trade_item)
 
     # ----------------------交易部分---------------------------
-    def limit_buy(self, symbol, price, count):
+    def limit_buy(self, symbol, price, count, complete_callback=None):
         """
         下个限价买单，不管是否成交
         :return: 限价买单的order id
         """
         buy_item = BuyLimitOrder(symbol=symbol, price=price, amount=count)
-        return self.main_engine.send_order(buy_item)
+        return self.main_engine.send_order(buy_item, complete_callback)
 
-    def limit_sell(self, symbol, price, count):
+    def limit_sell(self, symbol, price, count, complete_callback=None):
         """
         下一个限价卖单，不管是否成交
         :return: 限价卖单的order id
         """
         sell_item = SellLimitOrder(symbol=symbol, price=price, amount=count)
-        return self.main_engine.send_order(sell_item)
+        return self.main_engine.send_order(sell_item, complete_callback)
 
     def cancel_order(self, order_id, callback=None):
         """

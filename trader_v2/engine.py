@@ -227,8 +227,8 @@ class MainEngine(object):
     def send_orders_and_cancel(self, orders, callback):
         self.trader.send_and_cancel_orders(orders=orders, callback=callback)
 
-    def send_order(self, order):
-        return self.trader.send_order(order)
+    def send_order(self, order, complete_callback):
+        return self.trader.send_order(order, complete_callback)
 
     def cancel_order(self, order_id, callback):
         self.trader.cancel_order(order_id, callback)
