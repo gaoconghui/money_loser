@@ -45,6 +45,8 @@ class Querier(object):
 
     def register_order(self, order_id, interval=5, callback=None):
         self.__order_ids_info[order_id] = (interval, callback)
+        next_call_time = time.time() + interval
+        self.__delay_job_queue.add(order_id, next_call_time)
 
     def unregister_order(self, order_id):
         if order_id in self.__order_ids_info:
@@ -56,10 +58,11 @@ class Querier(object):
             order_info = self.huobi_api.order_info(order_id)
             state = order_info.get("data", {}).get("state", "")
             # 订单完成，回调
+            logger.debug("querier job , order id : {order_id} , state : {state}".format(order_id=order_id, state=state))
             if state == "filled":
                 callback(order_id)
             # 订单被取消，直接返回
-            elif state == "canceled":
+            elif state == "canceled" or state == "partial-canceled":
                 return
             else:
                 # 订单查询任务塞回去
@@ -98,7 +101,7 @@ class Trader(object):
         self.__job_queue.put(event)
 
     def __run(self):
-        while self.running:
+        while self.running or not self.__job_queue.empty():
             try:
                 job = self.__job_queue.get(block=True, timeout=1)
                 func = job['func']
@@ -126,6 +129,7 @@ class Trader(object):
             "func": self._inner_send_order,
             "kwargs": {"order": order, "job_id": _id, "order_complete_callback": order_complete_callback}
         })
+        return _id
 
     def cancel_order(self, job_id, callback):
         self.__job_queue.put({
