@@ -11,6 +11,7 @@ from threading import Thread
 from trader_v2.account import Account
 from trader_v2.event import EVENT_TIMER, Event, EVENT_HEARTBEAT
 from trader_v2.market import HuobiMarket
+from trader_v2.settings import DELAY_POLICY
 from trader_v2.strategy.strategy_engine import StrategyEngine
 from trader_v2.strategy.strategy_three import StrategyThree
 from trader_v2.trader import HuobiTrader
@@ -179,7 +180,8 @@ class MainEngine(object):
         self.markets = []
         self.trader = None
         self.strategy_engine = None
-        self.heartbeat = HeartBeat(event_engine=self.event_engine, max_delay=200, close_func=self.stop)
+        self.heartbeat = HeartBeat(event_engine=self.event_engine, max_delay=DELAY_POLICY.heartbeat_max_delay_ms,
+                                   close_func=self.stop)
         self.running = True
         self.account = Account("huobi")
 
