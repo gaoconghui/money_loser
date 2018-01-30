@@ -2,17 +2,16 @@
 """
 回测系统，需要实现strategy_engine的所有方法，用于代替strategy_engine
 """
+import datetime
 import logging
 from collections import defaultdict
 
-import datetime
 from empyrical import alpha_beta, sharpe_ratio, max_drawdown
 from pandas import DataFrame
 
 from trader_v2.account import Account
 from trader_v2.api_wrapper import get_kline_from_mongo
 from trader_v2.strategy.strategy_three import StrategyThree
-from trader_v2.strategy.util import split_symbol
 from trader_v2.trader_object import BarData, MarketTradeItem
 
 logger = logging.getLogger()
@@ -254,7 +253,7 @@ class Trader(object):
         # 本币单位为usdt
         symbol, _, price, count, callback = self.order_id_map.pop(order_id)
         self.order_center[symbol].remove(order_id)
-        base, quote = split_symbol(symbol)
+        base, quote = account.split_symbol(symbol)
         bo1 = self.account.trade(quote, -count * price)
         bo2 = self.account.trade(base, count * (1 - self.charge))
         logger.debug(
@@ -267,7 +266,7 @@ class Trader(object):
     def sell_limit_deal(self, order_id):
         symbol, _, price, count, callback = self.order_id_map.pop(order_id)
         self.order_center[symbol].remove(order_id)
-        base, quote = split_symbol(symbol)
+        base, quote = account.split_symbol(symbol)
         sell_money = count * price
         bo1 = self.account.trade(quote, sell_money * (1 - self.charge))
         bo2 = self.account.trade(base, -count)

@@ -328,17 +328,3 @@ class ArrayManagerDF(object):
     @property
     def amount(self):
         return self.df['amount']
-
-
-def split_symbol(symbol):
-    """
-    划分symbol为两种币，如btcusdt分为btc,usdt，返回值为基础货币与计价货币
-    :param symbol: 
-    :return: 
-    """
-    if symbol.endswith("usdt"):
-        return symbol.replace("usdt", ""), "usdt"
-    if symbol.endswith("eth"):
-        return symbol.replace("eth", ""), "eth"
-    if symbol.endswith("btc"):
-        return symbol.replace("btc", ""), "btc"

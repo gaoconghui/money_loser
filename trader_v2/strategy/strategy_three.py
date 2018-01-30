@@ -13,7 +13,6 @@
 import logging
 
 from trader_v2.strategy.base import StrategyBase
-from trader_v2.strategy.util import split_symbol
 
 logger = logging.getLogger("strategy.grid")
 
@@ -37,7 +36,7 @@ class StrategyThree(StrategyBase):
         # 上一次市场上交易成功的价格
         self.last_trade_price = None
         self.ready = False
-        self.base_currency, self.quote_currency = split_symbol(symbol)
+        self.base_currency, self.quote_currency = account.split_symbol(symbol)
 
         self.buy_order_id = None
         self.sell_order_id = None
@@ -90,8 +89,10 @@ class StrategyThree(StrategyBase):
         if self.sell_order_id:
             self.strategy_engine.cancel_order(self.sell_order_id)
         # 计算新单价格并下单
-        low_price = min(self.base_price * (1 - self.x), self.last_trade_price)
-        high_price = max(self.base_price * (1 + self.x), self.last_trade_price)
+        low_price = round(min(self.base_price * (1 - self.x), self.last_trade_price),
+                          self.account.price_precision(self.symbol))
+        high_price = round(max(self.base_price * (1 + self.x), self.last_trade_price),
+                           self.account.price_precision(self.symbol))
         buy_low_count = int(min(self.per_count, self.account.position(self.quote_currency) / low_price))
         sell_high_count = int(min(self.per_count, self.account.position(self.base_currency)))
         logger.info("send limit buy order , {symbol} price: {p} , count:{c}".format(symbol=self.symbol, p=low_price,
@@ -117,7 +118,14 @@ class StrategyThree(StrategyBase):
 
     def stop(self):
         """
-        保存所有的数据
+        取消之前这个策略下的单
         :return: 
         """
+        logger.info("starting close")
+        if self.buy_order_id:
+            logger.info("cancel buy order")
+            self.strategy_engine.cancel_order(self.buy_order_id)
+        if self.sell_order_id:
+            logger.info("cancel sell order")
+            self.strategy_engine.cancel_order(self.sell_order_id)
         StrategyBase.stop(self)
