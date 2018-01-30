@@ -40,7 +40,8 @@ class Querier(object):
         self.__processor.start()
 
     def stop(self):
-        self.running = True
+        logger.info("close querier")
+        self.running = False
 
     def register_order(self, order_id, interval=5, callback=None):
         self.__order_ids_info[order_id] = (interval, callback)
@@ -102,7 +103,9 @@ class Trader(object):
                 job = self.__job_queue.get(block=True, timeout=1)
                 func = job['func']
                 kwargs = job['kwargs']
-                callback = kwargs.pop("callback")
+                callback = None
+                if "callback" in kwargs:
+                    callback = kwargs.pop("callback")
                 result = func(**kwargs)
                 if callback:
                     callback(result)
@@ -190,6 +193,10 @@ class HuobiTrader(Trader):
         Trader.start(self)
         self.order_querier.start()
 
+    def stop(self):
+        self.order_querier.stop()
+        Trader.stop(self)
+
     def _inner_send_and_cancel_orders(self, orders):
         t1 = ThreadWithReturnValue(target=self.huobi_api.send_order, args=(orders[0],))
         t2 = ThreadWithReturnValue(target=self.huobi_api.send_order, args=(orders[1],))
@@ -221,7 +228,12 @@ class HuobiTrader(Trader):
     def _inner_cancel_order(self, job_id):
         if job_id in self.job_order_map:
             order_id = self.job_order_map[job_id]
-            return job_id, self.huobi_api.cancel_order(order_id)
+            result = self.huobi_api.cancel_order(order_id).get("status", "failed")
+            logger.debug(
+                "cancel order , order id : {order_id} , job id : {job_id} , result : {result}".format(order_id=order_id,
+                                                                                                      job_id=job_id,
+                                                                                                      result=result))
+            return job_id, result
         return job_id, None
 
     def _inner_query_order(self, job_id):
@@ -237,6 +249,7 @@ class HuobiTrader(Trader):
         :param result: 
         :return: 
         """
+        logger.debug("order complete , order id : {order_id}".format(order_id=order_id))
         if order_id in self.order_job_map:
             job_id = self.order_job_map[order_id]
             callback = self.job_callback_map.get(job_id, None)
@@ -245,6 +258,7 @@ class HuobiTrader(Trader):
                 callback(job_id)
 
     def update_position(self):
+        logger.debug("update position")
         for i in range(3):
             result = self.huobi_api.get_balance()
             if result.get("status") == "ok":
