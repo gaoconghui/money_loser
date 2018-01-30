@@ -2,10 +2,10 @@
 """
 回测系统，需要实现strategy_engine的所有方法，用于代替strategy_engine
 """
-import datetime
 import logging
 from collections import defaultdict
 
+import datetime
 from empyrical import alpha_beta, sharpe_ratio, max_drawdown
 from pandas import DataFrame
 
@@ -15,7 +15,7 @@ from trader_v2.strategy.strategy_three import StrategyThree
 from trader_v2.strategy.util import split_symbol
 from trader_v2.trader_object import BarData, MarketTradeItem
 
-logger = logging.getLogger("strategy.back_testing")
+logger = logging.getLogger()
 logger.addHandler(logging.StreamHandler())
 logger.setLevel(logging.DEBUG)
 
@@ -29,7 +29,7 @@ class BackTestingEngine(object):
         self.kline_1min_gen_map = {}
         self.account = account
         self.start_account = account.copy()
-        self.charge = 0.2 / 100
+        self.trader = Trader(account)
 
         self.now_price = {"usdt": 1, "btcusdt": 10000}
         self.now_date = None
@@ -69,35 +69,14 @@ class BackTestingEngine(object):
             bars.append(self.kline_1min_gen_map[symbol].next())
         callback(bars)
 
-    def limit_buy(self, symbol, price, count=None):
-        """
-        限价买
-        """
-        # 本币单位为usdt
-        base, quote = split_symbol(symbol)
-        quote_position = self.account.position(quote)
-        if not count:
-            count = quote_position / price
-        bo1 = self.account.trade(quote, -count * price)
-        bo2 = self.account.trade(base, count * (1 - self.charge))
-        logger.debug(
-            "buy limit , symbol : {symbol} , price : {price} ,count:{count}, success bo : {bo1} , {bo2}".format(
-                symbol=symbol,
-                count=count, price=price, bo1=bo1,
-                bo2=bo2))
+    def limit_buy(self, symbol, price, count=None, complete_callback=None):
+        return self.trader.limit_buy(symbol, price, count, complete_callback)
 
-    def limit_sell(self, symbol, price, count=None):
-        base, quote = split_symbol(symbol)
-        if not count:
-            count = self.account.position(base)
-        sell_money = count * price
-        bo1 = self.account.trade(quote, sell_money * (1 - self.charge))
-        bo2 = self.account.trade(base, -count)
-        logger.debug(
-            "sell limit , symbol : {symbol} , price : {price}, count:{count}, success bo : {bo1} , {bo2}".format(
-                symbol=symbol, count=count,
-                price=price, bo1=bo1,
-                bo2=bo2))
+    def limit_sell(self, symbol, price, count=None, complete_callback=None):
+        return self.trader.limit_sell(symbol, price, count, complete_callback)
+
+    def cancel_order(self, order_id, callback=None):
+        self.trader.cancel_order(order_id, callback)
 
     def calculate_balance(self):
         """
@@ -140,6 +119,7 @@ class BackTestingEngine(object):
                     id=1
                 )
                 callback(market_trade_item)
+            self.trader.symbol_price_change(bar.symbol, bar.close)
             self.calculate_balance()
 
     def stop(self):
@@ -195,7 +175,7 @@ class DataSource(object):
 
     def load_1min_kline(self, symbol):
         if symbol not in self.kline_1min_cache:
-            self.kline_1min_cache[symbol] = get_kline_from_mongo(symbol=symbol, period="60min", size=2000)
+            self.kline_1min_cache[symbol] = get_kline_from_mongo(symbol=symbol, period="15min", size=2000)
         for b in self.kline_1min_cache[symbol]:
             bar = BarData()
             bar.symbol = symbol
@@ -209,17 +189,107 @@ class DataSource(object):
             yield bar
 
 
+class Trader(object):
+    """
+    交易中心，负责订单保存以及订单撮合
+    一个symbol只有一个价格，低于价格的卖单成交，高于价格的买单成交
+    """
+
+    def __init__(self, account):
+        self.account = account
+        self.symbol_center = {}
+        # symbol : [(order_id , direction , price , count,callback)]
+        # 时长上所有的订单
+        self.order_center = defaultdict(list)
+        # 订单详情
+        self.order_id_map = {}
+        self.charge = 0.2 / 100
+        self.order_id = 0
+
+    def limit_buy(self, symbol, price, count, callback):
+        self.order_id += 1
+        order_id = self.order_id
+        self.order_center[symbol].append(order_id)
+        self.order_id_map[order_id] = symbol, "buy", price, count, callback
+        return order_id
+
+    def cancel_order(self, order_id, callback=None):
+        if order_id in self.order_id_map:
+            symbol = self.order_id_map.pop(order_id)[0]
+            self.order_center[symbol].remove(order_id)
+            if callback:
+                callback(order_id, True)
+
+    def limit_sell(self, symbol, price, count, callback):
+        self.order_id += 1
+        order_id = self.order_id
+        self.order_center[symbol].append(order_id)
+        self.order_id_map[order_id] = symbol, "sell", price, count, callback
+        return order_id
+
+    def symbol_price_change(self, symbol, price):
+        self.symbol_center[symbol] = price
+        self.matching_order(symbol)
+
+    def matching_order(self, symbol):
+        """
+        撮合时长上的订单，会遍历一次所有市场上的限价单。如果后期量大，可以改为堆结构
+        :param symbol: 
+        :return: 
+        """
+        if symbol not in self.symbol_center:
+            return
+        symbol_price = self.symbol_center[symbol]
+        for order_id in self.order_center[symbol]:
+            _, direction, price, _, _ = self.order_id_map[order_id]
+            if direction == "buy" and price >= symbol_price:
+                self.buy_limit_deal(order_id)
+            if direction == "sell" and price <= symbol_price:
+                self.sell_limit_deal(order_id)
+
+    def buy_limit_deal(self, order_id):
+        """
+        限价买
+        """
+        # 本币单位为usdt
+        symbol, _, price, count, callback = self.order_id_map.pop(order_id)
+        self.order_center[symbol].remove(order_id)
+        base, quote = split_symbol(symbol)
+        bo1 = self.account.trade(quote, -count * price)
+        bo2 = self.account.trade(base, count * (1 - self.charge))
+        logger.debug(
+            "buy limit , symbol : {symbol} , price : {price} ,count:{count}, success bo : {bo1} , {bo2}".format(
+                symbol=symbol,
+                count=count, price=price, bo1=bo1,
+                bo2=bo2))
+        callback(order_id)
+
+    def sell_limit_deal(self, order_id):
+        symbol, _, price, count, callback = self.order_id_map.pop(order_id)
+        self.order_center[symbol].remove(order_id)
+        base, quote = split_symbol(symbol)
+        sell_money = count * price
+        bo1 = self.account.trade(quote, sell_money * (1 - self.charge))
+        bo2 = self.account.trade(base, -count)
+        logger.debug(
+            "sell limit , symbol : {symbol} , price : {price}, count:{count}, success bo : {bo1} , {bo2}".format(
+                symbol=symbol, count=count,
+                price=price, bo1=bo1,
+                bo2=bo2))
+        callback(order_id)
+
+
 class NotSupportError(StandardError):
     pass
 
 
 if __name__ == '__main__':
     account = Account()
-    account.init_position({"btc": 0.1, "swftc": 50000})
+    account.init_position({"btc": 0.05, "swftc": 15000})
     # account.init_position({"usdt": 1300, "btc": 0.1})
     engine = BackTestingEngine(account)
-    # strategy = StrategyTwo(engine, ["btcusdt"])
-    strategy = StrategyThree(engine, account, symbol="swftcbtc", x=10, per_count=15000)
+    # strategy = StrategyTwo(engine, account, ["btcusdt"])
+    strategy = StrategyThree(engine, account, symbol="swftcbtc", x=10, per_count=2500)
     strategy.start()
     engine.start_test()
     engine.stop()
