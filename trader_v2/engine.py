@@ -12,7 +12,6 @@ from trader_v2.account import Account
 from trader_v2.event import EVENT_TIMER, Event, EVENT_HEARTBEAT
 from trader_v2.market import HuobiMarket
 from trader_v2.strategy.strategy_engine import StrategyEngine
-from trader_v2.strategy.strategy_three import StrategyThree
 from trader_v2.trader import HuobiTrader
 
 logger = logging.getLogger("engine")
@@ -190,14 +189,16 @@ class MainEngine(object):
 
     def start_strategies(self):
         self.strategy_engine = StrategyEngine(main_engine=self, event_engine=self.event_engine)
-        # 启动一号三方套利策略
-        # for coin in ["wax", "tnb", "hsr"]:
-        #     strategy = StrategyOne(self.strategy_engine, self.account, coin)
-        #     self.strategy_engine.append(strategy)
-        # 三号网格策略
-        strategy = StrategyThree(self.strategy_engine, self.account, symbol="swftcbtc", x=10, per_count=1)
-        self.strategy_engine.append(strategy)
         self.strategy_engine.start()
+
+    def append_strategy(self, strategy_cls, strategy_kwargs):
+        if not self.strategy_engine:
+            logger.error("strategy engine is nor ready")
+            return False
+        strategy_kwargs["strategy_engine"] = self.strategy_engine
+        if "account" not in strategy_kwargs:
+            strategy_kwargs["account"] = self.account
+        self.strategy_engine.append(strategy_cls, strategy_kwargs)
 
     def start_trader(self):
         trader = HuobiTrader(self.event_engine, self.account)
@@ -217,8 +218,10 @@ class MainEngine(object):
 
     def stop(self):
         self.heartbeat.stop()
-        self.strategy_engine.stop()
-        self.trader.stop()
+        if self.strategy_engine:
+            self.strategy_engine.stop()
+        if self.trader:
+            self.trader.stop()
         for market in self.markets:
             market.stop()
         self.event_engine.stop()

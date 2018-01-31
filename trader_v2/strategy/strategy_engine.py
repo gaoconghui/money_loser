@@ -2,12 +2,15 @@
 """
 为了方便回测以及做一堆乱七八糟的事，策略不直接和其他引擎交互，而是跟策略引擎进行交互
 """
+import logging
 from collections import defaultdict
 
 from trader_v2.event import Event, EVENT_HUOBI_SUBSCRIBE_TRADE, EVENT_HUOBI_MARKET_DETAIL_PRE, \
     EVENT_HUOBI_SUBSCRIBE_DEPTH, EVENT_HUOBI_DEPTH_PRE, EVENT_HUOBI_SUBSCRIBE_1MIN_KLINE, EVENT_HUOBI_KLINE_PRE, \
     EVENT_HUOBI_REQUEST_KLINE, EVENT_HUOBI_RESPONSE_KLINE_PRE
 from trader_v2.trader_object import BuyLimitOrder, SellLimitOrder
+
+logger = logging.getLogger("strategy.engine")
 
 
 class StrategyEngine(object):
@@ -112,12 +115,13 @@ class StrategyEngine(object):
     def send_orders_and_cancel(self, orders, callback):
         self.main_engine.send_orders_and_cancel(orders, callback)
 
-    def append(self, strategy):
+    def append(self, strategy_class, kwargs):
+        strategy = strategy_class(**kwargs)
+        strategy.start()
         self.strategies.append(strategy)
 
     def start(self):
-        for strategy in self.strategies:
-            strategy.start()
+        logger.info("strategy engine start ready")
 
     def stop(self):
         for strategy in self.strategies:
