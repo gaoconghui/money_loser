@@ -22,7 +22,7 @@ class MarketDepth(object):
 
     def __init__(self):
         self.symbol = EMPTY_STRING
-
+        self.raw = None
         self.bids = [TradeItem(EMPTY_FLOAT, EMPTY_FLOAT) for i in range(5)]
         self.asks = [TradeItem(EMPTY_FLOAT, EMPTY_FLOAT) for i in range(5)]
         self.datetime = None

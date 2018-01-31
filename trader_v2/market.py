@@ -180,6 +180,7 @@ class HuobiMarket(object):
         bids = item['tick']['bids']
         asks = item['tick']['asks']
         depth_item = MarketDepth()
+        depth_item.raw = item
         depth_item.datetime = datetime.datetime.fromtimestamp(item['ts'] / 1000.0)
         depth_item.symbol = symbol
         # 见过这样的情况，市场上所有的卖单都没了，所以需要两次循环分别取ask和bid
