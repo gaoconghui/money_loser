@@ -16,6 +16,7 @@ from websocket import create_connection
 from trader_v2.event import Event, EVENT_HUOBI_DEPTH_PRE, EVENT_HUOBI_SUBSCRIBE_DEPTH, EVENT_HUOBI_SUBSCRIBE_TRADE, \
     EVENT_HUOBI_MARKET_DETAIL_PRE, EVENT_HUOBI_REQUEST_KLINE, EVENT_HUOBI_RESPONSE_KLINE_PRE, \
     EVENT_HUOBI_SUBSCRIBE_1MIN_KLINE, EVENT_HUOBI_KLINE_PRE
+from trader_v2.settings import DELAY_POLICY
 from trader_v2.trader_object import MarketDepth, TradeItem, MarketTradeItem, BarData
 from trader_v2.util import Cache
 
@@ -56,7 +57,7 @@ class HuobiMarket(object):
     def __init__(self, event_engine):
         super(HuobiMarket, self).__init__()
         self.event_engine = event_engine
-        self.ws = create_connection("wss://api.huobi.pro/ws")
+        self.ws = create_connection(DELAY_POLICY.market_url)
         self.__market_thread = threading.Thread(target=self.run)
         self.running = True
 

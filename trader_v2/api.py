@@ -12,17 +12,17 @@ import urllib
 import urlparse
 
 import requests
-# timeout in 5 seconds:
 from requests.adapters import HTTPAdapter
 
+from trader_v2.settings import DELAY_POLICY
 from trader_v2.trader_object import order_type
 from trader_v2.util import timeme, ThreadWithReturnValue
 
 logger = logging.getLogger(__name__)
 
-TIMEOUT = 3
+TIMEOUT = DELAY_POLICY.api_timeout_second
 API_HOST = "api.huobi.pro"
-SCHEME = 'http'
+SCHEME = DELAY_POLICY.api_schema
 # language setting: 'zh-CN', 'en':
 LANG = 'zh-CN'
 DEFAULT_GET_HEADERS = {
@@ -38,7 +38,7 @@ DEFAULT_POST_HEADERS = {
 }
 
 # API 请求地址
-MARKET_URL = TRADE_URL = "http://api.huobi.pro"
+MARKET_URL = TRADE_URL = DELAY_POLICY.trade_url
 
 adapter = HTTPAdapter()
 
