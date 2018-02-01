@@ -46,16 +46,19 @@ def init_log():
 if __name__ == '__main__':
     init_log()
     # 火币网数据获取
+    total = 0
     event_engine = EventEngine()
     account = Account()
     trader = HuobiTrader(event_engine=event_engine, account=account)
     logger.info("start test trader banalce test")
     logger.info("----------------------------------------------")
-    for i in range(10):
+    for i in range(20):
         t1 = time.time()
         trader.update_position()
-        logger.info("test trader get balalce time {t}".format(t=time.time() - t1))
-    logger.info("----------------------------------------------")
+        sub=time.time() - t1
+        logger.info("test trader get balalce time {t}".format(t=sub))
+        total += sub
+    logger.info("------------------avg : {a}----------------------------".format(a=total / 20))
     logger.info("test huobi websocket")
     huobi = HuobiMarket(event_engine=event_engine)
 
