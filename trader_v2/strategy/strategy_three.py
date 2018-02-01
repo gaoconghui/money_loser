@@ -24,11 +24,22 @@ class StrategyThree(StrategyBase):
     """
     __name__ = "strategy three （grid strategy）"
 
-    def __init__(self, strategy_engine, account, symbol, x, per_count, base_price=None):
+    def __init__(self, strategy_engine, account, symbol, buy_x, sell_x, per_count, base_price=None):
+        """
+        
+        :param strategy_engine: 
+        :param account: 
+        :param symbol: 
+        :param buy_x: 下跌buy_x买入
+        :param sell_x: 上涨sell_x卖出
+        :param per_count: 每浮动1%交易的量
+        :param base_price: 
+        """
         super(StrategyThree, self).__init__(strategy_engine, account)
         self.symbol = symbol
         # 每次上涨或下跌x触发策略
-        self.x = x / 100.0
+        self.buy_x = buy_x / 100.0
+        self.sell_x = sell_x / 100.0
         # 每次买入/卖出的份额
         self.per_count = per_count
         # 基准价格
@@ -89,12 +100,12 @@ class StrategyThree(StrategyBase):
         if self.sell_order_id:
             self.strategy_engine.cancel_order(self.sell_order_id)
         # 计算新单价格并下单
-        low_price = round(min(self.base_price * (1 - self.x), self.last_trade_price),
+        low_price = round(min(self.base_price * (1 - self.buy_x), self.last_trade_price),
                           self.account.price_precision(self.symbol))
-        high_price = round(max(self.base_price * (1 + self.x), self.last_trade_price),
+        high_price = round(max(self.base_price * (1 + self.sell_x), self.last_trade_price),
                            self.account.price_precision(self.symbol))
-        buy_low_count = int(min(self.per_count, self.account.position(self.quote_currency) / low_price))
-        sell_high_count = int(min(self.per_count, self.account.position(self.base_currency)))
+        buy_low_count = int(min(self.per_count * self.buy_x * 100, self.account.position(self.quote_currency) / low_price))
+        sell_high_count = int(min(self.per_count * self.sell_x * 100, self.account.position(self.base_currency)))
         logger.info("send limit buy order , {symbol} price: {p} , count:{c}".format(symbol=self.symbol, p=low_price,
                                                                                     c=buy_low_count))
         self.buy_order_id = self.strategy_engine.limit_buy(self.symbol, low_price, buy_low_count,
@@ -107,11 +118,11 @@ class StrategyThree(StrategyBase):
     def order_deal(self, order_id):
         if order_id == self.buy_order_id:
             logger.info("buy order complete")
-            self.base_price = self.base_price * (1 - self.x)
+            self.base_price = self.base_price * (1 - self.buy_x)
             self.on_base_change()
         elif order_id == self.sell_order_id:
             logger.info("sell order complete")
-            self.base_price = self.base_price * (1 + self.x)
+            self.base_price = self.base_price * (1 + self.sell_x)
             self.on_base_change()
         else:
             logger.error("order not exist")

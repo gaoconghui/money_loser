@@ -7,8 +7,8 @@ import time
 
 import os
 
-from trader_v2.collector.collector import DepthCollector
 from trader_v2.engine import MainEngine
+from trader_v2.strategy.strategy_three import StrategyThree
 
 _video_sch_dir = '%s/' % os.path.dirname(os.path.realpath(__file__))
 _filepath = os.path.dirname(sys.argv[0])
@@ -46,14 +46,14 @@ def init_log():
 
 init_log()
 engine = MainEngine()
-engine.start("collector")
+engine.start("strategy")
 # 三号网格交易策略
-# engine.append_strategy(StrategyThree, {"symbol": "swftcbtc", "x": 10, "per_count": 1})
+engine.append_strategy(StrategyThree, {"symbol": "swftcbtc", "sell_x": 8, "buy_x": 7, "per_count": 250})
 # 一号套利策略
 # for coin in ["wax", "tnb", "hsr"]:
 #     engine.append_strategy(StrategyOne,strategy_kwargs={"coin" : coin})
 
-engine.append_collector(DepthCollector, {"symbols": ["swftcbtc"]})
+# engine.append_collector(DepthCollector, {"symbols": ["swftcbtc"]})
 
 running = True
 

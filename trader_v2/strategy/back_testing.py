@@ -94,7 +94,7 @@ class BackTestingEngine(object):
         self.stat.loc[self.now_date] = usdt_strategy, usdt_market
 
     def start_test(self):
-        def gen_seq(start,end,precision):
+        def gen_seq(start, end, precision):
             """
             返回从start到end的一个序列，相隔都为precision
             """
@@ -104,7 +104,7 @@ class BackTestingEngine(object):
             else:
                 flag = 1
             seq = []
-            for i in range(int((end - start) /precision )):
+            for i in range(int((end - start) / precision)):
                 seq.append(start + flag * precision * i)
             seq.append(end)
             return seq
@@ -123,7 +123,7 @@ class BackTestingEngine(object):
                 last_price = self.now_price[bar.symbol]
                 now_price = bar.close
                 precision = self.account.price_precision(bar.symbol)
-                seq = gen_seq(last_price,now_price,precision)
+                seq = gen_seq(last_price, now_price, precision)
             else:
                 seq = [bar.close]
             for close_price in seq:
@@ -171,6 +171,8 @@ class BackTestingEngine(object):
         logger.info("夏普率(未换算天与年) : {sharpe}".format(sharpe=sharpe))
         logger.info("alaph : {alaph} , beta : {beta}".format(alaph=alaph, beta=beta))
         logger.info("最大回撤 {down}".format(down=max_dowm))
+        logger.info("盈利 {profit}".format(profit=(self.stat["strategy_balance"][-1] - self.stat["strategy_balance"][0]) /
+                                                self.stat["strategy_balance"][0]))
 
         import matplotlib.pylab as plt
         plt.plot(self.stat['strategy_balance'], color='r')
@@ -198,7 +200,7 @@ class DataSource(object):
 
     def load_1min_kline(self, symbol):
         if symbol not in self.kline_1min_cache:
-            self.kline_1min_cache[symbol] = get_kline_from_mongo(symbol=symbol, period="15min", size=2000)
+            self.kline_1min_cache[symbol] = get_kline_from_mongo(symbol=symbol, period="15min")
         for b in self.kline_1min_cache[symbol]:
             bar = BarData()
             bar.symbol = symbol
@@ -307,13 +309,34 @@ class NotSupportError(StandardError):
 
 
 if __name__ == '__main__':
+    import itertools
+
+    # result = {}
+    # logger.setLevel(logging.ERROR)
+    # for sell_x, buy_x in itertools.product(range(1, 10), range(1, 10)):
+    #     account = Account()
+    #     account.init_position({"btc": 0.05, "swftc": 15000})
+    #     # account.init_position({"usdt": 1300, "btc": 0.1})
+    #     engine = BackTestingEngine(account)
+    #     # strategy = StrategyTwo(engine, account, ["btcusdt"])
+    #     strategy = StrategyThree(engine, account, symbol="swftcbtc", sell_x=sell_x, buy_x=buy_x, per_count=250)
+    #     strategy.start()
+    #     engine.start_test()
+    #     engine.stop()
+    #     stat = engine.stat
+    #     profit = (stat["strategy_balance"][-1] - stat["strategy_balance"][0]) / stat["strategy_balance"][0]
+    #     result[(sell_x, buy_x)] = profit
+    #     print sell_x,buy_x,profit
+    # print result
+
     account = Account()
     account.init_position({"btc": 0.05, "swftc": 15000})
     # account.init_position({"usdt": 1300, "btc": 0.1})
     engine = BackTestingEngine(account)
     # strategy = StrategyTwo(engine, account, ["btcusdt"])
-    strategy = StrategyThree(engine, account, symbol="swftcbtc", x=10, per_count=2500)
+    strategy = StrategyThree(engine, account, symbol="swftcbtc", sell_x=8, buy_x=7, per_count=250)
     strategy.start()
     engine.start_test()
     engine.stop()
-    print account.position_map
+
+
