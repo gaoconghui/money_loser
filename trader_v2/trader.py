@@ -5,7 +5,7 @@
 
 import logging
 import time
-from Queue import Queue, Empty
+from queue import Queue, Empty
 from threading import Thread
 
 from trader_v2 import secret_config
@@ -276,5 +276,5 @@ class HuobiDebugTrader(Trader):
     def _inner_send_and_cancel_orders(self, orders):
         time.sleep(3)
         for order in orders:
-            print "deal", order
+            print("deal", order)
         return True, True

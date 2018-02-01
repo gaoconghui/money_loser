@@ -80,4 +80,4 @@ def get_symbols_map():
 
 if __name__ == '__main__':
     account = Account()
-    print account.split_symbol("btcusdt")
+    print(account.split_symbol("btcusdt"))

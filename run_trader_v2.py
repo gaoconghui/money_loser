@@ -7,6 +7,7 @@ import time
 
 import os
 
+from trader_v2.collector.collector import DepthCollector
 from trader_v2.engine import MainEngine
 from trader_v2.strategy.strategy_three import StrategyThree
 
@@ -48,7 +49,7 @@ init_log()
 engine = MainEngine()
 engine.start("strategy")
 # 三号网格交易策略
-engine.append_strategy(StrategyThree, {"symbol": "swftcbtc", "sell_x": 8, "buy_x": 7, "per_count": 250})
+engine.append_strategy(StrategyThree, {"symbol": "swftcbtc", "sell_x": 8, "buy_x": 7, "per_count": 1})
 # 一号套利策略
 # for coin in ["wax", "tnb", "hsr"]:
 #     engine.append_strategy(StrategyOne,strategy_kwargs={"coin" : coin})
@@ -60,7 +61,7 @@ running = True
 
 def close_for_sigterm(a, b):
     global running
-    print "close"
+    print("close")
     engine.stop()
     running = False
 

@@ -32,16 +32,16 @@ class StrategyBase(object):
         self.strategy_engine.request_1min_kline(symbol, callback=self.on_1min_kline_req)
 
     def on_depth(self, depth_item):
-        print depth_item
+        print(depth_item)
 
     def on_market_trade(self, market_trade_item):
         pass
 
     def on_1min_kline(self, bar_data):
-        print bar_data
+        print(bar_data)
 
     def on_1min_kline_req(self, klines):
-        print klines
+        print(klines)
 
     def stop(self):
         logger.info("close strategy {name}".format(name=self.__name__))

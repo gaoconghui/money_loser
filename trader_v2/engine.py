@@ -4,7 +4,7 @@
 """
 import logging
 import time
-from Queue import Queue, Empty
+from queue import Queue, Empty
 from collections import defaultdict
 from threading import Thread
 

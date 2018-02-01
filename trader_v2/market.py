@@ -10,7 +10,6 @@ import logging
 import threading
 import time
 
-from six import StringIO
 from websocket import create_connection
 
 from trader_v2.event import Event, EVENT_HUOBI_DEPTH_PRE, EVENT_HUOBI_SUBSCRIBE_DEPTH, EVENT_HUOBI_SUBSCRIBE_TRADE, \
@@ -24,10 +23,7 @@ logger = logging.getLogger("market.huobi")
 
 
 def gunziptxt(data):
-    buf = StringIO(data)
-    of = gzip.GzipFile(fileobj=buf, mode="rb")
-    outdata = of.read()
-    return outdata
+    return gzip.decompress(data)
 
 
 # 订阅 KLine 数据

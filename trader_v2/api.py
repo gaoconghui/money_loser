@@ -8,8 +8,7 @@ import hashlib
 import hmac
 import json
 import logging
-import urllib
-import urlparse
+from urllib import parse
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -51,7 +50,7 @@ def http_get_request(url, params, add_to_headers=None):
     }
     if add_to_headers:
         headers.update(add_to_headers)
-    postdata = urllib.urlencode(params)
+    postdata = parse.urlencode(params)
     s = requests.session()
     s.mount('https://', adapter=adapter)
     s.mount('http://', adapter=adapter)
@@ -60,7 +59,7 @@ def http_get_request(url, params, add_to_headers=None):
         if response.status_code == 200:
             return response.json()
         else:
-            print response.text
+            print(response.text)
             return {"status": "fail"}
     except Exception as e:
         print("httpGet failed, detail is:%s" % e)
@@ -100,7 +99,7 @@ class HuobiApi(object):
 
     def create_sign(self, params, method, host_url, request_path):
         sorted_params = sorted(params.items(), key=lambda d: d[0], reverse=False)
-        encode_params = urllib.urlencode(sorted_params)
+        encode_params = parse.urlencode(sorted_params)
         payload = [method, host_url, request_path, encode_params]
         payload = '\n'.join(payload)
         payload = payload.encode(encoding='UTF8')
@@ -119,10 +118,10 @@ class HuobiApi(object):
                           'Timestamp': timestamp}
 
         host_url = TRADE_URL
-        host_name = urlparse.urlparse(host_url).hostname
+        host_name = parse.urlparse(host_url).hostname
         host_name = host_name.lower()
         params_to_sign['Signature'] = self.create_sign(params_to_sign, method, host_name, request_path)
-        url = host_url + request_path + '?' + urllib.urlencode(params_to_sign)
+        url = host_url + request_path + '?' + parse.urlencode(params_to_sign)
         return http_post_request(url, params)
 
     def _api_key_get(self, params, request_path):
@@ -134,7 +133,7 @@ class HuobiApi(object):
                        'Timestamp': timestamp})
 
         host_url = TRADE_URL
-        host_name = urlparse.urlparse(host_url).hostname
+        host_name = parse.urlparse(host_url).hostname
         host_name = host_name.lower()
 
         params['Signature'] = self.create_sign(params, method, host_name, request_path)
@@ -448,7 +447,7 @@ def show_balance_usdt(trader):
         balance_list.append((coin, btc_price * count, count))
     balance_list.sort(key=lambda x: -x[1])
     for item in balance_list:
-        print item
+        print(item)
 
 
 if __name__ == '__main__':
@@ -458,4 +457,4 @@ if __name__ == '__main__':
     # t1 = time.time()
     # print get_depth("waxbtc", depth_type="step0")
     # print time.time() - t1
-    print get_symbols()
+    print(get_symbols())
