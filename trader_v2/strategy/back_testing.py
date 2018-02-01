@@ -94,6 +94,21 @@ class BackTestingEngine(object):
         self.stat.loc[self.now_date] = usdt_strategy, usdt_market
 
     def start_test(self):
+        def gen_seq(start,end,precision):
+            """
+            返回从start到end的一个序列，相隔都为precision
+            """
+            precision = 1.0 / 10 ** precision
+            if start > end:
+                flag = -1
+            else:
+                flag = 1
+            seq = []
+            for i in range(int((end - start) /precision )):
+                seq.append(start + flag * precision * i)
+            seq.append(end)
+            return seq
+
         # 获取数据源
         for symbol in self.kline_1min.keys():
             if symbol not in self.kline_1min_gen_map:
@@ -102,23 +117,32 @@ class BackTestingEngine(object):
         all_kline.sort(key=lambda x: x.datetime)
         # 开始输入回测数据
         for bar in all_kline:
-            self.now_date = bar.datetime
-            self.now_price[bar.symbol] = bar.close
+            # 返回交易数据（不过交易数据是假的）
+            # 因为在在一个k线内会发生比较剧烈的变化，所以模拟的时长交易数据会做一个平滑的切换
+            if self.now_date:
+                last_price = self.now_price[bar.symbol]
+                now_price = bar.close
+                precision = self.account.price_precision(bar.symbol)
+                seq = gen_seq(last_price,now_price,precision)
+            else:
+                seq = [bar.close]
+            for close_price in seq:
+                for callback in self.market_trade_map[bar.symbol]:
+                    self.trader.symbol_price_change(bar.symbol, close_price)
+                    market_trade_item = MarketTradeItem(
+                        price=close_price,
+                        amount=bar.amount / len(seq),
+                        direction="sell",
+                        datetime=bar.datetime,
+                        symbol=bar.symbol,
+                        id=1
+                    )
+                    callback(market_trade_item)
             # 返回k线
             for callback in self.kline_1min[bar.symbol]:
                 callback(bar)
-            # 返回交易数据（不过交易数据是假的）
-            for callback in self.market_trade_map[bar.symbol]:
-                market_trade_item = MarketTradeItem(
-                    price=bar.close,
-                    amount=bar.amount,
-                    direction="sell",
-                    datetime=bar.datetime,
-                    symbol=bar.symbol,
-                    id=1
-                )
-                callback(market_trade_item)
-            self.trader.symbol_price_change(bar.symbol, bar.close)
+            self.now_date = bar.datetime
+            self.now_price[bar.symbol] = bar.close
             self.calculate_balance()
 
     def stop(self):
