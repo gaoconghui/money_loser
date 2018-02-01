@@ -17,3 +17,9 @@ class LowFrequencyHighDelay(object):
 
 
 DELAY_POLICY = LowFrequencyHighDelay
+
+
+class CollectorSetting(object):
+    mongo_host = "localhost"
+    mongo_db = "huobi"
+    mongo_depth_coll = "depth"

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from pymongo import MongoClient
 
-from data_collect import settings
+from trader_v2.settings import CollectorSetting
 
 
 class MongoDatabase(object):
@@ -9,8 +9,8 @@ class MongoDatabase(object):
         self.db = None
 
     def start(self):
-        client = MongoClient(settings.mongo_host)
-        self.db = client[settings.mongo_db]
+        client = MongoClient(CollectorSetting.mongo_host)
+        self.db = client[CollectorSetting.mongo_db]
 
     def get_coll(self, coll_name):
         return self.db[coll_name]

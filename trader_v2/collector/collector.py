@@ -4,7 +4,7 @@
 """
 import logging
 
-from data_collect import settings
+from trader_v2.settings import CollectorSetting
 
 logger = logging.getLogger("collector.depth")
 
@@ -34,7 +34,7 @@ class BaseCollector(object):
 class DepthCollector(BaseCollector):
     def __init__(self, engine, database, symbols):
         super(DepthCollector, self).__init__(engine, database)
-        self.coll = self.database.get_coll(settings.mongo_depth_coll)
+        self.coll = self.database.get_coll(CollectorSetting.mongo_depth_coll)
         self.symbols = symbols
 
     def start(self):
