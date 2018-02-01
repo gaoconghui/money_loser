@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-from data_collect.database import MongoDatabase
+from collections import defaultdict
+
+from trader_v2.collector.database import MongoDatabase
 from trader_v2.event import EVENT_HUOBI_DEPTH_PRE, Event, EVENT_HUOBI_SUBSCRIBE_DEPTH
 
 
@@ -7,11 +9,12 @@ class DataEngine(object):
     def __init__(self, event_engine):
         self.event_engine = event_engine
         self.collectors = []
-        self.subscribe_map = {}
+        self.subscribe_map = defaultdict(list)
         self.mongo = None
 
     def start_database(self):
         self.mongo = MongoDatabase()
+        self.mongo.start()
 
     def append(self, collector_cls, collector_kwargs):
         collector_kwargs['engine'] = self

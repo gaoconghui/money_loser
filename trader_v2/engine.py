@@ -9,6 +9,7 @@ from collections import defaultdict
 from threading import Thread
 
 from trader_v2.account import Account
+from trader_v2.collector.engine import DataEngine
 from trader_v2.event import EVENT_TIMER, Event, EVENT_HEARTBEAT
 from trader_v2.market import HuobiMarket
 from trader_v2.settings import DELAY_POLICY
@@ -179,17 +180,18 @@ class MainEngine(object):
         self.markets = []
         self.trader = None
         self.strategy_engine = None
+        self.data_engine = None
         self.heartbeat = HeartBeat(event_engine=self.event_engine, max_delay=DELAY_POLICY.heartbeat_max_delay_ms,
                                    close_func=self.stop)
         self.running = True
-        self.account = Account("huobi")
+        self.account = None
 
     def start_markets(self):
         huobi_market = HuobiMarket(self.event_engine)
         huobi_market.start()
         self.markets.append(huobi_market)
 
-    def start_strategies(self):
+    def start_strategy_engine(self):
         self.strategy_engine = StrategyEngine(main_engine=self, event_engine=self.event_engine)
         self.strategy_engine.start()
 
@@ -197,10 +199,22 @@ class MainEngine(object):
         if not self.strategy_engine:
             logger.error("strategy engine is nor ready")
             return False
-        strategy_kwargs["strategy_engine"] = self.strategy_engine
         if "account" not in strategy_kwargs:
             strategy_kwargs["account"] = self.account
         self.strategy_engine.append(strategy_cls, strategy_kwargs)
+
+    def start_data_engine(self):
+        self.data_engine = DataEngine(self.event_engine)
+        self.data_engine.start()
+
+    def append_collector(self, collector_cls, collector_kwargs):
+        if not self.data_engine:
+            logger.error("data engine is not ready")
+            return False
+        self.data_engine.append(collector_cls, collector_kwargs)
+
+    def start_account(self):
+        self.account = Account("huobi")
 
     def start_trader(self):
         trader = HuobiTrader(self.event_engine, self.account)
@@ -210,18 +224,51 @@ class MainEngine(object):
     def start_heartbeat(self):
         self.heartbeat.start()
 
-    def start(self):
+    def start(self, mode="strategy"):
+        """
+        启动引擎，可以有若干种mode
+        strategy ： 用来单纯的跑策略
+        collector ： 用来单纯的收集数据
+        all ： 都启动
+        """
+        if mode == "strategy":
+            self._start_for_strategy()
+        if mode == "collector":
+            self._start_for_collector()
+        if mode == "all":
+            self._start_all()
+
+    def _start_for_strategy(self):
+        # 按策略方式启动
         # 顺序不能变 先启动事件驱动引擎，然后详情获取，交易系统，最后启动策略系统
         self.event_engine.start()
+        self.start_account()
         self.start_markets()
         self.start_trader()
-        self.start_strategies()
+        self.start_strategy_engine()
+        self.start_heartbeat()
+
+    def _start_for_collector(self):
+        self.event_engine.start()
+        self.start_markets()
+        self.start_data_engine()
+
+    def _start_all(self):
+        self.event_engine.start()
+        self.start_account()
+        self.start_markets()
+        self.start_trader()
+        self.start_strategy_engine()
+        self.start_data_engine()
         self.start_heartbeat()
 
     def stop(self):
-        self.heartbeat.stop()
+        if self.heartbeat:
+            self.heartbeat.stop()
         if self.strategy_engine:
             self.strategy_engine.stop()
+        if self.data_engine:
+            self.data_engine.stop()
         if self.trader:
             self.trader.stop()
         for market in self.markets:

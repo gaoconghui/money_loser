@@ -116,6 +116,7 @@ class StrategyEngine(object):
         self.main_engine.send_orders_and_cancel(orders, callback)
 
     def append(self, strategy_class, kwargs):
+        kwargs["strategy_engine"] = self
         strategy = strategy_class(**kwargs)
         strategy.start()
         self.strategies.append(strategy)
