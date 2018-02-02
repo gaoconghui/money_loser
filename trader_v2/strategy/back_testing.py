@@ -12,6 +12,7 @@ from pandas import DataFrame
 from trader_v2.account import Account
 from trader_v2.api_wrapper import get_kline_from_mongo
 from trader_v2.strategy.strategy_three import StrategyThree
+from trader_v2.strategy.stretegy_five import StrategyFive
 from trader_v2.trader_object import BarData, MarketTradeItem
 
 logger = logging.getLogger()
@@ -65,7 +66,7 @@ class BackTestingEngine(object):
             self.kline_1min_gen_map[symbol] = self.data_source.load_1min_kline(symbol)
         bars = []
         for i in range(100):
-            bars.append(self.kline_1min_gen_map[symbol].next())
+            bars.append(next(self.kline_1min_gen_map[symbol]))
         callback(bars)
 
     def limit_buy(self, symbol, price, count=None, complete_callback=None):
@@ -84,10 +85,10 @@ class BackTestingEngine(object):
         """
         usdt_strategy = 0
         usdt_market = 0
-        for k, v in self.account.position_map.iteritems():
+        for k, v in self.account.position_map.items():
             price = self.usdt_price(k)
             usdt_strategy += v * price
-        for k, v in self.start_account.position_map.iteritems():
+        for k, v in self.start_account.position_map.items():
             price = self.usdt_price(k)
             usdt_market += v * price
 
@@ -152,7 +153,7 @@ class BackTestingEngine(object):
         position = self.account.position_map
         usdt = 0
         # 结算
-        for k, v in position.iteritems():
+        for k, v in position.items():
             # 如果k能直接换算为usdt
             usdt += v * self.usdt_price(k)
         logger.info("last usdt price : {usdt}".format(usdt=usdt))
@@ -164,12 +165,12 @@ class BackTestingEngine(object):
                                    self.stat["market_balance"].shift(1)
 
         sharpe = sharpe_ratio(self.stat["strategy_rate"], self.stat["market_rate"])
-        alaph, beta = alpha_beta(self.stat["strategy_rate"], self.stat["market_rate"])
+        alpha, beta = alpha_beta(self.stat["strategy_rate"], self.stat["market_rate"])
         max_dowm = max_drawdown(self.stat["strategy_rate"])
 
         logger.info("-----------------------stat-------------------------")
         logger.info("夏普率(未换算天与年) : {sharpe}".format(sharpe=sharpe))
-        logger.info("alaph : {alaph} , beta : {beta}".format(alaph=alaph, beta=beta))
+        logger.info("alpha : {alpha} , beta : {beta}".format(alpha=alpha, beta=beta))
         logger.info("最大回撤 {down}".format(down=max_dowm))
         logger.info("盈利 {profit}".format(profit=(self.stat["strategy_balance"][-1] - self.stat["strategy_balance"][0]) /
                                                 self.stat["strategy_balance"][0]))
@@ -178,8 +179,8 @@ class BackTestingEngine(object):
         plt.plot(self.stat['strategy_balance'], color='r')
         plt.plot(self.stat['market_balance'], color='g')
         plt.show()
-        print self.stat.tail(5)
-        print self.stat.head(5)
+        print(self.stat.tail(5))
+        print(self.stat.head(5))
 
     def usdt_price(self, coin):
         if coin in self.now_price:
@@ -304,7 +305,7 @@ class Trader(object):
         callback(order_id)
 
 
-class NotSupportError(StandardError):
+class NotSupportError(Exception):
     pass
 
 
@@ -335,6 +336,7 @@ if __name__ == '__main__':
     engine = BackTestingEngine(account)
     # strategy = StrategyTwo(engine, account, ["btcusdt"])
     strategy = StrategyThree(engine, account, symbol="swftcbtc", sell_x=8, buy_x=7, per_count=250)
+    # strategy = StrategyFive(engine, account, symbols="swftcbtc")
     strategy.start()
     engine.start_test()
     engine.stop()

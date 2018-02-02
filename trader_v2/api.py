@@ -442,7 +442,7 @@ def show_balance_usdt(trader):
                float(item['balance']) > 0}
     btc_usdt = price("btcusdt")
     balance_list = []
-    for coin, count in balance.iteritems():
+    for coin, count in balance.items():
         btc_price = price(coin + "btc") * btc_usdt
         balance_list.append((coin, btc_price * count, count))
     balance_list.sort(key=lambda x: -x[1])

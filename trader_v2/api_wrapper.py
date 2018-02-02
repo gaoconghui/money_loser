@@ -31,14 +31,14 @@ def init_mongo(coll_name):
     return coll
 
 
-def get_kline_from_mongo(symbol, period, size):
+def get_kline_from_mongo(symbol, period, size=2000):
     coll = init_mongo("kline_" + period)
     return list(coll.find({"symbol" : symbol}).sort([("ts" , -1)]).limit(size))
 
 
 def dump_kline(symbol, period, size, overload=True):
     coll = init_mongo("kline_" + period)
-    print coll
+    print(coll)
     bars = api.get_kline(symbol, period, size)['data'][::-1]
     for bar in bars:
         _id = bar.pop("id")
@@ -54,4 +54,4 @@ def dump_kline(symbol, period, size, overload=True):
 
 
 if __name__ == '__main__':
-    print dump_kline("swftcbtc", "15min", 2000)
+    print(dump_kline("btcusdt", "15min", 2000))

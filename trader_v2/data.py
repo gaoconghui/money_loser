@@ -28,7 +28,7 @@ class CustomSerializedMixin(object):
         """
         class_name = self.__class__.__name__
         dump_fields = self._get_dump_fields()
-        for field, value in data_center[class_name].iteritems():
+        for field, value in data_center[class_name].items():
             if field in dump_fields:
                 self.__dict__[field] = value
 
