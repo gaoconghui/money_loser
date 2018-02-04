@@ -6,7 +6,7 @@ import logging
 from collections import defaultdict
 
 from trader_v2.event import Event, EVENT_HUOBI_SUBSCRIBE_TRADE, EVENT_HUOBI_MARKET_DETAIL_PRE, \
-    EVENT_HUOBI_SUBSCRIBE_DEPTH, EVENT_HUOBI_DEPTH_PRE, EVENT_HUOBI_SUBSCRIBE_1MIN_KLINE, EVENT_HUOBI_KLINE_PRE, \
+    EVENT_HUOBI_SUBSCRIBE_DEPTH, EVENT_HUOBI_DEPTH_PRE, EVENT_HUOBI_SUBSCRIBE_KLINE, EVENT_HUOBI_KLINE_PRE, \
     EVENT_HUOBI_REQUEST_KLINE, EVENT_HUOBI_RESPONSE_KLINE_PRE
 from trader_v2.trader_object import BuyLimitOrder, SellLimitOrder
 
@@ -48,26 +48,26 @@ class StrategyEngine(object):
             self.event_engine.register(type_, self.on_callback)
         self.subscribe_map[type_].append(callback)
 
-    def subscribe_1min_kline(self, symbol, callback):
+    def subscribe_kline(self, symbol, period, callback):
         """
         订阅一分钟k线图
         """
-        type_ = EVENT_HUOBI_KLINE_PRE + symbol + "_" + "1min"
+        type_ = EVENT_HUOBI_KLINE_PRE + symbol + "_" + period
         if type_ not in self.subscribe_map:
-            event = Event(EVENT_HUOBI_SUBSCRIBE_1MIN_KLINE)
-            event.dict_ = {"data": symbol}
+            event = Event(EVENT_HUOBI_SUBSCRIBE_KLINE)
+            event.dict_ = {"data": {"symbol": symbol, "period": period}}
             self.event_engine.put(event)
             self.event_engine.register(type_, self.on_callback)
         self.subscribe_map[type_].append(callback)
 
     # ---------------请求相关接口-----------------
-    def request_1min_kline(self, symbol, callback):
-        type_ = EVENT_HUOBI_RESPONSE_KLINE_PRE + symbol + "_" + "1min"
+    def request_kline(self, symbol, period, callback):
+        type_ = EVENT_HUOBI_RESPONSE_KLINE_PRE + symbol + "_" + period
         if type_ not in self.subscribe_map:
             event = Event(EVENT_HUOBI_REQUEST_KLINE)
-            event.dict_ = {"data": {"symbol": symbol, "period": "1min"}}
+            event.dict_ = {"data": {"symbol": symbol, "period": period}}
             self.event_engine.put(event)
-            self.event_engine.register(EVENT_HUOBI_RESPONSE_KLINE_PRE + symbol + "_" + "1min",
+            self.event_engine.register(EVENT_HUOBI_RESPONSE_KLINE_PRE + symbol + "_" + period,
                                        self.on_callback)
         self.subscribe_map[type_].append(callback)
 

@@ -26,10 +26,16 @@ class StrategyBase(object):
         self.strategy_engine.subscribe_market_trade(symbol, callback=self.on_market_trade)
 
     def subscribe_1min_kline(self, symbol):
-        self.strategy_engine.subscribe_1min_kline(symbol, callback=self.on_1min_kline)
+        self.strategy_engine.subscribe_kline(symbol, period="1min", callback=self.on_1min_kline)
+
+    def subscribe_1day_kline(self, symbol):
+        self.strategy_engine.subscribe_kline(symbol, period="1day", callback=self.on_1day_kline)
 
     def request_1min_kline(self, symbol):
-        self.strategy_engine.request_1min_kline(symbol, callback=self.on_1min_kline_req)
+        self.strategy_engine.request_kline(symbol, period="1min", callback=self.on_1min_kline_req)
+
+    def request_1day_kline(self, symbol):
+        self.strategy_engine.request_kline(symbol, period="1day", callback=self.on_1day_kline_req)
 
     def on_depth(self, depth_item):
         print(depth_item)
@@ -40,7 +46,13 @@ class StrategyBase(object):
     def on_1min_kline(self, bar_data):
         print(bar_data)
 
+    def on_1day_kline(self, bar_data):
+        print(bar_data)
+
     def on_1min_kline_req(self, klines):
+        print(klines)
+
+    def on_1day_kline_req(self, klines):
         print(klines)
 
     def stop(self):

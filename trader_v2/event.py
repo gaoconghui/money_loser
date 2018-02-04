@@ -7,19 +7,22 @@ EVENT_HEARTBEAT = "heartbeat"
 # {"data" : MarketDepth}
 EVENT_HUOBI_DEPTH_PRE = "huobi_depth_"
 EVENT_HUOBI_MARKET_DETAIL_PRE = "huobi_market_detail_"
-EVENT_HUOBI_KLINE_PRE = "huobi_kline_"
+
 # 订阅某symbol行情
 # {"data": symbol}
 EVENT_HUOBI_SUBSCRIBE_DEPTH = "huobi_subscribe_depth"
 EVENT_HUOBI_SUBSCRIBE_TRADE = "huobi_subscribe_trade"
-EVENT_HUOBI_SUBSCRIBE_1MIN_KLINE = "huobi_subscribe_1min_kline"
 
+# 订阅k线信息
+# {"data" : {"symbol" : symbol , "period" : period}}
+EVENT_HUOBI_SUBSCRIBE_KLINE = "huobi_subscribe_kline"
 # 查询火币网k线请求
 # {"data" : {"symbol" : symbol , "period" : "period"}}
 EVENT_HUOBI_REQUEST_KLINE = "huobi_request_kline"
-# 查询火币网k线图返回
+# 对于订阅kline的返回 EVENT_HUOBI_KLINE_PRE_symbol_period
+EVENT_HUOBI_KLINE_PRE = "huobi_kline_"
+# 查询火币网k线图返回 EVENT_HUOBI_RESPONSE_KLINE_PRE_symbol_period
 EVENT_HUOBI_RESPONSE_KLINE_PRE = "huobi_response_kline_"
-
 
 
 class Event:

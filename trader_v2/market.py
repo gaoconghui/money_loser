@@ -14,7 +14,7 @@ from websocket import create_connection
 
 from trader_v2.event import Event, EVENT_HUOBI_DEPTH_PRE, EVENT_HUOBI_SUBSCRIBE_DEPTH, EVENT_HUOBI_SUBSCRIBE_TRADE, \
     EVENT_HUOBI_MARKET_DETAIL_PRE, EVENT_HUOBI_REQUEST_KLINE, EVENT_HUOBI_RESPONSE_KLINE_PRE, \
-    EVENT_HUOBI_SUBSCRIBE_1MIN_KLINE, EVENT_HUOBI_KLINE_PRE
+    EVENT_HUOBI_SUBSCRIBE_KLINE, EVENT_HUOBI_KLINE_PRE
 from trader_v2.settings import DELAY_POLICY
 from trader_v2.trader_object import MarketDepth, TradeItem, MarketTradeItem, BarData
 from trader_v2.util import Cache
@@ -60,7 +60,7 @@ class HuobiMarket(object):
         self.engine_event_processor = {
             EVENT_HUOBI_SUBSCRIBE_DEPTH: self.subscribe_depth,
             EVENT_HUOBI_SUBSCRIBE_TRADE: self.subscribe_trade_detail,
-            EVENT_HUOBI_SUBSCRIBE_1MIN_KLINE: self.subscribe_1min_kline,
+            EVENT_HUOBI_SUBSCRIBE_KLINE: self.subscribe_kline,
             EVENT_HUOBI_REQUEST_KLINE: self.request_kline
         }
         for _type in self.engine_event_processor.keys():
@@ -75,10 +75,10 @@ class HuobiMarket(object):
         """
         _type = event.type_
         if _type in self.engine_event_processor:
-            symbol = event.dict_['data']
-            self.engine_event_processor[_type](symbol)
+            data = event.dict_['data']
+            self.engine_event_processor[_type](data)
             if "subscribe" in _type:
-                self.subscribe_set.add((_type, symbol))
+                self.subscribe_set.add((_type, data))
 
     @cache.accept_once
     def subscribe_depth(self, symbol):
@@ -101,9 +101,11 @@ class HuobiMarket(object):
         self.ws.send(trade_str)
 
     @cache.accept_once
-    def subscribe_1min_kline(self, symbol):
-        logger.info("subscribe imin kline {symbol}".format(symbol=symbol))
-        sub_name = "market.{symbol}.kline.1min".format(symbol=symbol)
+    def subscribe_kline(self, item):
+        symbol = item["symbol"]
+        period = item["period"]
+        logger.info("subscribe {period} kline {symbol}".format(symbol=symbol,period=period))
+        sub_name = "market.{symbol}.kline.{period}".format(symbol=symbol,period=period)
         trade_str = json.dumps({"sub": sub_name, "id": "id10"})
         self.ws.send(trade_str)
 
@@ -134,6 +136,9 @@ class HuobiMarket(object):
                 self.parse_kline_recv(item)
 
     def parse_kline_recv(self, item):
+        """
+        处理kline订阅
+        """
         symbol = self.parse_symbol(item['ch'])
         b = item['tick']
         bar = BarData()
@@ -151,6 +156,9 @@ class HuobiMarket(object):
         self.event_engine.put(event)
 
     def parse_kline_rep(self, item):
+        """
+        处理kline请求
+        """
         symbol = self.parse_symbol(item['rep'])
         period = item['rep'].split(".")[-1]
         bars = []
