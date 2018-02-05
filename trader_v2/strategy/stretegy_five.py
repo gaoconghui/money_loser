@@ -21,11 +21,13 @@ class StrategyFive(StrategyBase):
 
     __name__ = "strategy five"
 
-    def __init__(self, strategy_engine, account, symbols):
+    def __init__(self, strategy_engine, account, symbols, all_money, N):
         super(StrategyFive, self).__init__(strategy_engine, account)
         if not isinstance(symbols, list):
             symbols = [symbols]
         self.symbols = symbols
+        self.all_money = all_money
+        self.N = N
         self.bar_managers = {symbol: BarManager(partial(self.on_bar, symbol)) for symbol in symbols}
         self.array_managers = {symbol: ArrayManagerDF() for symbol in symbols}
         self.up_down_map = {}
@@ -57,8 +59,8 @@ class StrategyFive(StrategyBase):
 
     def on_bar(self, symbol, bar):
         self.array_managers[symbol].update_bar(bar)
-        if self.array_managers[symbol].count >= 48:
-            self.up_down_map[symbol] = self.array_managers[symbol].donchian(n=48)
+        if self.array_managers[symbol].count >= 72:
+            self.up_down_map[symbol] = self.array_managers[symbol].donchian(n=72)
             self.atr_map[symbol] = self.array_managers[symbol].atr(n=14)
 
     def on_market_trade(self, market_trade_item):
@@ -85,10 +87,10 @@ class StrategyFive(StrategyBase):
         count_max_can_buy = round(self.account.position(quote) / price,
                                   self.account.amount_precision(symbol)) - 10 ** -self.account.amount_precision(symbol)
         # 通过atr计算出的头寸
-        count_by_atr = round(2.5 / 100 * 0.5 / self.atr_map[symbol],
+        count_by_atr = round(self.N / 100 * self.all_money / self.atr_map[symbol],
                              self.account.amount_precision(symbol)) - 10 ** -self.account.amount_precision(symbol)
         count = min(count_max_can_buy, count_by_atr)
-        if count < 1:
+        if count < 3 * 10 ** -self.account.amount_precision(symbol):
             return
         self.buy_price_map[symbol] = price
         self.strategy_engine.limit_buy(symbol, price, count)
@@ -97,7 +99,7 @@ class StrategyFive(StrategyBase):
 
         base, quote = self.account.split_symbol(symbol)
         count = self.account.position(base)
-        if count < 1:
+        if count < 1 * 10 ** -self.account.amount_precision(symbol):
             return
         if symbol in self.buy_price_map:
             self.buy_price_map.pop(symbol)
