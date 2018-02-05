@@ -28,11 +28,17 @@ class StrategyBase(object):
     def subscribe_1min_kline(self, symbol):
         self.strategy_engine.subscribe_kline(symbol, period="1min", callback=self.on_1min_kline)
 
+    def subscribe_60min_kline(self, symbol):
+        self.strategy_engine.subscribe_kline(symbol, period="60min", callback=self.on_60min_kline)
+
     def subscribe_1day_kline(self, symbol):
         self.strategy_engine.subscribe_kline(symbol, period="1day", callback=self.on_1day_kline)
 
     def request_1min_kline(self, symbol):
         self.strategy_engine.request_kline(symbol, period="1min", callback=self.on_1min_kline_req)
+
+    def request_60min_kline(self, symbol):
+        self.strategy_engine.request_kline(symbol, period="60min", callback=self.on_60min_kline_req)
 
     def request_1day_kline(self, symbol):
         self.strategy_engine.request_kline(symbol, period="1day", callback=self.on_1day_kline_req)
@@ -46,10 +52,16 @@ class StrategyBase(object):
     def on_1min_kline(self, bar_data):
         print(bar_data)
 
+    def on_60min_kline(self, bar_data):
+        print(bar_data)
+
     def on_1day_kline(self, bar_data):
         print(bar_data)
 
     def on_1min_kline_req(self, klines):
+        print(klines)
+
+    def on_60min_kline_req(self, klines):
         print(klines)
 
     def on_1day_kline_req(self, klines):
