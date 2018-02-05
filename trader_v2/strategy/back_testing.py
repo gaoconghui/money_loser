@@ -12,7 +12,6 @@ from pandas import DataFrame
 from trader_v2.account import Account
 from trader_v2.api_wrapper import get_kline_from_mongo
 from trader_v2.strategy.strategy_three import StrategyThree
-from trader_v2.strategy.stretegy_five import StrategyFive
 from trader_v2.trader_object import BarData, MarketTradeItem
 
 logger = logging.getLogger()
@@ -52,10 +51,10 @@ class BackTestingEngine(object):
     def subscribe_depth(self, symbol, callback):
         self.depth_map[symbol].append(callback)
 
-    def subscribe_1min_kline(self, symbol, callback):
+    def subscribe_kline(self, symbol, period, callback):
         self.kline_1min[symbol].append(callback)
 
-    def request_1min_kline(self, symbol, callback):
+    def request_kline(self, symbol, period, callback):
         """
         请求kline数据，直接从数据库中捞出来发过去
         :param symbol: 
@@ -310,8 +309,6 @@ class NotSupportError(Exception):
 
 
 if __name__ == '__main__':
-    import itertools
-
     # result = {}
     # logger.setLevel(logging.ERROR)
     # for sell_x, buy_x in itertools.product(range(1, 10), range(1, 10)):
@@ -340,5 +337,3 @@ if __name__ == '__main__':
     strategy.start()
     engine.start_test()
     engine.stop()
-
-

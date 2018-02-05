@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-import talib
+
+try:
+    import talib
+except:
+    talib = None
 from pandas import DataFrame
 
 from trader_v2.trader_object import BarData
@@ -29,7 +33,7 @@ class BarManager(object):
     # ----------------------------------------------------------------------
     def update_from_bar(self, bar):
         # 如果已经存在且是新的一分钟了
-        if self.bar and self.bar.datetime.minute != bar.datetime.minute:
+        if self.bar and self.bar.datetime != bar.datetime:
             # 生成上一分钟K线的时间戳
             self.bar.datetime = self.bar.datetime.replace(second=0, microsecond=0)  # 将秒和微秒设为0
 
@@ -296,11 +300,11 @@ class ArrayManagerDF(object):
         self.count += 1
         if not self.inited and self.count >= self.size:
             self.inited = True
+        self.df.loc[bar.datetime] = (bar.open, bar.high, bar.low, bar.close, bar.count, bar.amount)
+        if self.inited:
+            self.df = self.df[-self.size:]
 
-        self.df[bar.datetime] = (bar.open, bar.high, bar.low, bar.close, bar.count.bar.amount)
-        self.df = self.df[-self.size:-1]
-
-    # ----------------------------------------------------------------------
+# ----------------------------------------------------------------------
     @property
     def open(self):
         """获取开盘价序列"""
@@ -328,3 +332,30 @@ class ArrayManagerDF(object):
     @property
     def amount(self):
         return self.df['amount']
+
+    def donchian(self, n, array=False):
+        """
+        唐奇安通道，过去n天内的最大值以及最小值
+        :param n: 
+        :param array: 
+        :return: 
+        """
+        up = self.df['high'].rolling(window=n).max()
+        down = self.df['low'].rolling(window=n).min()
+        if array:
+            return up, down
+        return up.iloc[-1], down.iloc[-1]
+
+    def atr(self, n, array=False):
+        """
+        atr 指标
+        正常的TR=∣最高价-最低价∣和∣最高价-昨收∣和∣昨收-最低价∣的最大值
+        但是这边有点特殊，走势是连续的，所以最高价-最低价一定是最大的
+        :param n: 
+        :param array: 
+        :return: 
+        """
+        result = (self.df['high'] - self.df['low']).rolling(window=n).mean()
+        if array:
+            return result
+        return result.iloc[-1]
