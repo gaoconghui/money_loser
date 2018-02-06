@@ -282,8 +282,5 @@ class MainEngine(object):
     def send_order(self, order, complete_callback):
         return self.trader.send_order(order, complete_callback)
 
-    def cancel_order(self, order_id, callback):
-        self.trader.cancel_order(order_id, callback)
-
-    def query_order(self, order_id, callback):
-        self.trader.query_order(order_id, callback)
+    def cancel_order(self, order, callback):
+        self.trader.cancel_order(order, callback)

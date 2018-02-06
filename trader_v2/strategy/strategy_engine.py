@@ -8,7 +8,7 @@ from collections import defaultdict
 from trader_v2.event import Event, EVENT_HUOBI_SUBSCRIBE_TRADE, EVENT_HUOBI_MARKET_DETAIL_PRE, \
     EVENT_HUOBI_SUBSCRIBE_DEPTH, EVENT_HUOBI_DEPTH_PRE, EVENT_HUOBI_SUBSCRIBE_KLINE, EVENT_HUOBI_KLINE_PRE, \
     EVENT_HUOBI_REQUEST_KLINE, EVENT_HUOBI_RESPONSE_KLINE_PRE
-from trader_v2.trader_object import BuyLimitOrder, SellLimitOrder
+from trader_v2.trader_object import OrderData, BUY_LIMIT, SELL_LIMIT
 
 logger = logging.getLogger("strategy.engine")
 
@@ -20,6 +20,8 @@ class StrategyEngine(object):
         self.strategies = []
 
         self.subscribe_map = defaultdict(list)
+        # 保存订单的信息
+        self.order_center = {}
 
     # --------------------订阅相关接口---------------------
     def subscribe_market_trade(self, symbol, callback):
@@ -83,34 +85,34 @@ class StrategyEngine(object):
         下个限价买单，不管是否成交
         :return: 限价买单的order id
         """
-        buy_item = BuyLimitOrder(symbol=symbol, price=price, amount=count)
-        return self.main_engine.send_order(buy_item, complete_callback)
+        buy_item = OrderData(symbol=symbol, order_type=BUY_LIMIT)
+        buy_item.price = price
+        buy_item.amount = count
+        order = self.main_engine.send_order(buy_item, complete_callback)
+        self.order_center[order.job_id] = order
+        return order.job_id
 
     def limit_sell(self, symbol, price, count, complete_callback=None):
         """
         下一个限价卖单，不管是否成交
         :return: 限价卖单的order id
         """
-        sell_item = SellLimitOrder(symbol=symbol, price=price, amount=count)
-        return self.main_engine.send_order(sell_item, complete_callback)
+        sell_item = OrderData(symbol=symbol, order_type=SELL_LIMIT)
+        sell_item.price = price
+        sell_item.amount = count
+        order = self.main_engine.send_order(sell_item, complete_callback)
+        self.order_center[order.job_id] = order
+        return order.job_id
 
     def cancel_order(self, order_id, callback=None):
         """
         取消订单
-        :param order_ids: list of order id
+        :param order_id: 
         :param callback: 回调
         :return: 
         """
-        self.main_engine.cancel_order(order_id, callback)
-
-    def query_order(self, order_id, callback=None):
-        """
-        查询一个订单信息
-        :param order_id: 订单id
-        :param callback: 回调
-        :return: 
-        """
-        self.main_engine.query_order(order_id, callback)
+        order = self.order_center[order_id]
+        self.main_engine.cancel_order(order, callback)
 
     def send_orders_and_cancel(self, orders, callback):
         self.main_engine.send_orders_and_cancel(orders, callback)

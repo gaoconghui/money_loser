@@ -14,7 +14,6 @@ import requests
 from requests.adapters import HTTPAdapter
 
 from trader_v2.settings import DELAY_POLICY
-from trader_v2.trader_object import order_type
 from trader_v2.util import timeme, ThreadWithReturnValue
 
 logger = logging.getLogger(__name__)
@@ -168,7 +167,7 @@ class HuobiApi(object):
         params = {"account-id": self.account_id,
                   "amount": order_item.amount,
                   "symbol": order_item.symbol,
-                  "type": order_type[order_item.__class__.__name__],
+                  "type": order_item.order_type,
                   }
         if hasattr(order_item, "price"):
             params["price"] = order_item.price

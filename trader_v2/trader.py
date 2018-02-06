@@ -10,6 +10,7 @@ from threading import Thread
 
 from trader_v2 import secret_config
 from trader_v2.api import HuobiApi
+from trader_v2.trader_object import FILLED
 from trader_v2.util import ThreadWithReturnValue, DelayJobQueue
 
 logger = logging.getLogger("trader.huobi")
@@ -43,37 +44,66 @@ class Querier(object):
         logger.info("close querier")
         self.running = False
 
-    def register_order(self, order_id, interval=5, callback=None):
-        self.__order_ids_info[order_id] = (interval, callback)
+    def register_order(self, order, interval=5, callback=None):
+        self.__order_ids_info[order.order_id] = (interval, callback)
         next_call_time = time.time() + interval
-        self.__delay_job_queue.add(order_id, next_call_time)
+        self.__delay_job_queue.add(order, next_call_time)
 
     def unregister_order(self, order_id):
         if order_id in self.__order_ids_info:
             self.__order_ids_info.pop(order_id)
 
-    def do_query_job(self, order_id):
+    def do_query_job(self, order):
+        """
+        订单发生改变时回调
+        如果确定状态不再会改变，跳出循环
+        :param order: 
+        :return: 
+        """
+        order_id = order.order_id
+        # 如果order_id 没有在列表中，说明查询任务已经被取消了
         if order_id in self.__order_ids_info:
-            interval, callback = self.__order_ids_info[order_id]
-            order_info = self.huobi_api.order_info(order_id)
-            state = order_info.get("data", {}).get("state", "")
+            interval, change_callback = self.__order_ids_info[order_id]
+            order_info = self.huobi_api.order_info(order_id).get("data", {})
+            state = order_info.get("state", "")
             # 订单完成，回调
             logger.debug("querier job , order id : {order_id} , state : {state}".format(order_id=order_id, state=state))
-            if state == "filled":
-                callback(order_id)
-            # 订单被取消，直接返回
-            elif state == "canceled" or state == "partial-canceled":
-                return
-            else:
+
+            need_callback = False
+            need_next_loop = True
+
+            # 如果发生了成交
+            field_cash_amount = order_info["field-cash-amount"]
+            field_amount = order_info["field-amount"]
+            field_fees = order_info["field-fees"]
+
+            if (order.field_amount, order.field_fees, order.field_cash_amount) != (
+                    field_amount, field_fees, field_cash_amount):
+                order.field_amount = field_amount
+                order.field_fees = field_fees
+                order.field_cash_amount = field_cash_amount
+                need_callback = True
+
+            # 如果订单状态发生了改变
+            if state != order.order_type:
+                need_callback = True
+                order.order_type = state
+            # 订单状态终止
+            if state == "filled" or state == "canceled" or state == "partial-canceled":
+                need_next_loop = False
+
+            if need_callback and change_callback:
+                change_callback(order)
+            if need_next_loop:
                 # 订单查询任务塞回去
                 next_call_time = time.time() + interval
-                self.__delay_job_queue.add(order_id, next_call_time)
+                self.__delay_job_queue.add(order, next_call_time)
 
     def __run(self):
         while self.running:
-            for order_id in self.__delay_job_queue.pop_ready():
+            for order in self.__delay_job_queue.pop_ready():
                 try:
-                    self.do_query_job(order_id)
+                    self.do_query_job(order)
                 except:
                     pass
             time.sleep(1)
@@ -124,23 +154,17 @@ class Trader(object):
 
     def send_order(self, order, order_complete_callback):
         self.__job_id += 1
-        _id = self.__job_id
+        order.job_id = self.__job_id
         self.__job_queue.put({
             "func": self._inner_send_order,
-            "kwargs": {"order": order, "job_id": _id, "order_complete_callback": order_complete_callback}
+            "kwargs": {"order": order, "order_complete_callback": order_complete_callback}
         })
-        return _id
+        return order
 
-    def cancel_order(self, job_id, callback):
+    def cancel_order(self, order, callback):
         self.__job_queue.put({
             "func": self._inner_cancel_order,
-            "kwargs": {"job_id": job_id, "callback": callback}
-        })
-
-    def query_order(self, job_id, callback):
-        self.__job_queue.put({
-            "func": self._inner_query_order,
-            "kwargs": {"job_id": job_id, "callback": callback}
+            "kwargs": {"order": order, "callback": callback}
         })
 
     def _inner_send_and_cancel_orders(self, orders):
@@ -149,22 +173,16 @@ class Trader(object):
         """
         pass
 
-    def _inner_send_order(self, order, job_id, order_complete_callback):
+    def _inner_send_order(self, order, order_complete_callback):
         """
         发送一个订单，并把订单与job_id关联起来，之后可以根据job_id查询到这个order
         如果订单完成了 需要回调order_complete_callback方法
         """
         pass
 
-    def _inner_cancel_order(self, job_id):
+    def _inner_cancel_order(self, order):
         """
-        根据内部的job_id删除一个order
-        """
-        pass
-
-    def _inner_query_order(self, job_id):
-        """
-        根据内部job_id查询一个order
+        删除一个order
         """
         pass
 
@@ -188,10 +206,8 @@ class HuobiTrader(Trader):
         self.huobi_api = HuobiApi(secret_key=secret_config.huobi_secret_key,
                                   access_key=secret_config.huobi_access_key)
         self.order_querier = Querier(huobi_api=self.huobi_api)
-        # 对job_id 与外部订单的映射
-        self.job_order_map = {}
-        self.order_job_map = {}
         self.job_callback_map = {}
+        self.order_id_order_map = {}
 
     def start(self):
         Trader.start(self)
@@ -222,44 +238,47 @@ class HuobiTrader(Trader):
         self.update_position()
         return result
 
-    def _inner_send_order(self, order, job_id, order_complete_callback):
+    def _inner_send_order(self, order, order_complete_callback):
         order_id = self.huobi_api.send_order(order)
-        self.job_order_map[job_id] = order_id
-        self.order_job_map[order_id] = job_id
-        self.job_callback_map[job_id] = order_complete_callback
-        self.order_querier.register_order(order_id, interval=5, callback=self.order_complete_callback)
+        order.order_id = order_id
+        self.job_callback_map[order.job_id] = order_complete_callback
+        self.order_id_order_map[order_id] = order
+        self.register_order_query(order, interval=5, callback=self.order_change_callback)
 
-    def _inner_cancel_order(self, job_id):
-        if job_id in self.job_order_map:
-            order_id = self.job_order_map[job_id]
-            result = self.huobi_api.cancel_order(order_id).get("status", "failed")
-            logger.debug(
-                "cancel order , order id : {order_id} , job id : {job_id} , result : {result}".format(order_id=order_id,
-                                                                                                      job_id=job_id,
-                                                                                                      result=result))
-            return job_id, result
-        return job_id, None
+    def _inner_cancel_order(self, order):
+        order_id = order.order_id
+        result = self.huobi_api.cancel_order(order_id).get("status", "failed")
+        logger.debug(
+            "cancel order , order id : {order_id} , job id : {job_id} , result : {result}".format(order_id=order_id,
+                                                                                                  job_id=order.job_id,
+                                                                                                  result=result))
+        # 重置order的状态
+        order.cancel()
+        return order, result
 
-    def _inner_query_order(self, job_id):
-        if job_id in self.job_order_map:
-            order_id = self.job_order_map[job_id]
-            return job_id, self.huobi_api.order_info(order_id)
-        return job_id, None
-
-    def order_complete_callback(self, order_id):
+    def register_order_query(self, order, interval, callback):
         """
-        querier中保存的是order id，需要在这边做一次order_id 与job_id 的转换
-        :param order_id: 
+        注册任务查询，在订单状态或者是订单出现成交（部分成交）时会给回调
+        :param order: OrderData
+        :param interval: 查询时间间隔 
+        :param callback: 订单改变的回调
+        :return: 
+        """
+        self.order_querier.register_order(order, interval=interval, callback=callback)
+
+    def order_change_callback(self, order):
+        """
+        订单改变回调
+        :param order: 
         :param result: 
         :return: 
         """
-        logger.debug("order complete , order id : {order_id}".format(order_id=order_id))
-        if order_id in self.order_job_map:
-            job_id = self.order_job_map[order_id]
-            callback = self.job_callback_map.get(job_id, None)
+        logger.debug("order change , order id : {order_id}".format(order_id=order.order_id))
+        if order.order_status == FILLED:
+            callback = self.job_callback_map.get(order.job_id, None)
             if callback:
                 self.update_position()
-                callback(job_id)
+                callback(order)
 
     def update_position(self):
         logger.debug("update position")

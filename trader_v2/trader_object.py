@@ -31,18 +31,9 @@ class MarketDepth(object):
         return "market depth , symbol : {symbol}".format(symbol=self.symbol)
 
 
-order_type = {
-    "BUY_MARKET": "buy-market",
-    "SELL_MARKET": "sell-market",
-    "BUY_LIMIT": "buy-limit",
-    "SELL_LIMIT": "sell-limit"
-}
-
-
 class BarData(object):
     """K线数据"""
 
-    # ----------------------------------------------------------------------
     def __init__(self):
         """Constructor"""
 
@@ -67,34 +58,79 @@ class BarData(object):
         return str(self)
 
 
-# 市价买
-BuyMarketOrder = namedtuple("BUY_MARKET", field_names=["symbol", "amount"])
-# 限价买
-BuyLimitOrder = namedtuple("BUY_LIMIT", field_names=["symbol", "price", "amount"])
-# 市价卖
-SellMarketOrder = namedtuple("SELL_MARKET", field_names=["symbol", "amount"])
-# 限价卖
-SellLimitOrder = namedtuple("SELL_LIMIT", field_names=["symbol", "price", "amount"])
+# order type
+BUY_LIMIT = "buy-limit"
+BUY_MARKET = "buy-market"
+SELL_LIMIT = "sell-limit"
+SELL_MARKET = "sell-market"
+
+# order status 状态与火币网的状态保持一致
+# 已提交
+SUBMITTED = "submitted"
+# 部分成交
+PARTIAL_FILLED = "partial-filled"
+# 全部成交
+FILLED = "filled"
+# 部分成交撤销
+PARTIAL_CANCELED = "partial-canceled"
+# 已撤销
+CANCELED = "canceled"
 
 
-class TradeRequest(object):
-    """
-    包装发送，如下单，撤单等
-    """
+class OrderData(object):
+    def __init__(self, symbol, order_type):
+        self.symbol = symbol
+        self.order_type = order_type
+        self.price = EMPTY_FLOAT
+        self.amount = EMPTY_FLOAT
 
-    def __init__(self, order, callback):
-        self.symbol = order.symbol
-        self.order = order
-        self.request_time = datetime.datetime.now()
-        self.callback = callback
+        # 订单在本系统中分配的id
+        self.job_id = EMPTY_INT
+        # 订单在火币网的id
+        self.order_id = EMPTY_INT
 
+        # 订单状态
+        self.order_status = EMPTY_STRING
+        self.create_time = datetime.datetime.now()
+        self._cancel_time = None
 
-class TradeResponse(object):
-    """
-    包装req的返回
-    """
+        # 已成交数量
+        self.field_amount = EMPTY_FLOAT
+        # 已成交金额
+        self.field_cash_amount = EMPTY_FLOAT
+        # 手续费
+        self.field_fees = EMPTY_FLOAT
 
-    def __init__(self, request, result):
-        self.request = request
-        self.response_time = datetime.datetime.now()
-        self.result = result
+    @property
+    def cancel_time(self):
+        if self.order_status == PARTIAL_CANCELED or self.order_status == CANCELED:
+            return self._cancel_time
+        else:
+            return None
+
+    # 取消订单 订单状态等都自己判断
+    def cancel(self):
+        if self.order_status == PARTIAL_CANCELED or self.order_status == CANCELED:
+            return True
+        if self.order_status == SUBMITTED:
+            self._cancel_time = datetime.datetime.now()
+            self.order_status = CANCELED
+            return True
+        if self.order_status == PARTIAL_FILLED:
+            self._cancel_time = datetime.datetime.now()
+            self.order_status = PARTIAL_CANCELED
+            return True
+        return False
+
+    # 订单参数赋值是否合法
+    def isvalid(self):
+        if self.symbol == EMPTY_STRING or self.order_type == EMPTY_STRING:
+            return False
+        if self.order_type in [BUY_LIMIT, SELL_LIMIT]:
+            return self.price != EMPTY_FLOAT and self.amount != EMPTY_FLOAT
+        if self.order_type in [BUY_MARKET, SELL_MARKET]:
+            return self.price == EMPTY_FLOAT and self.amount != EMPTY_FLOAT
+        return False
+
+    def complete(self):
+        self.order_type = FILLED

@@ -7,7 +7,7 @@ import logging
 import math
 
 from trader_v2.strategy.base import StrategyBase
-from trader_v2.trader_object import TradeItem, SellLimitOrder, BuyLimitOrder
+from trader_v2.trader_object import TradeItem, OrderData, SELL_LIMIT, BUY_LIMIT
 
 logger = logging.getLogger("strategy.strategy_one")
 
@@ -125,8 +125,13 @@ class StrategyOne(StrategyBase):
         if amount < 1:
             logger.info("amount (c) < 1 ".format(c=amount))
             return
-        sell_item = SellLimitOrder(symbol=sell, price=sell_price, amount=amount)
-        buy_item = BuyLimitOrder(symbol=buy, price=buy_price, amount=amount)
+        sell_item = OrderData(symbol=sell, order_type=SELL_LIMIT)
+        sell_item.price = sell_price
+        sell_item.amount = amount
+
+        buy_item = OrderData(symbol=buy, order_type=BUY_LIMIT)
+        buy_item.price = buy_price
+        buy_item.amount = amount
         self.orders_cache = [sell_item, buy_item]
         self.can_send_orders = False
         self.strategy_engine.send_orders_and_cancel([sell_item, buy_item], callback=self.on_send_orders)
