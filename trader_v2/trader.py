@@ -92,9 +92,9 @@ class Querier(object):
                 need_callback = True
 
             # 如果订单状态发生了改变
-            if state != order.order_type:
+            if state != order.order_status:
                 need_callback = True
-                order.order_type = state
+                order.order_status = state
             # 订单状态终止
             if state == "filled" or state == "canceled" or state == "partial-canceled":
                 need_next_loop = False
