@@ -129,14 +129,14 @@ class StrategyThree(StrategyBase):
         self.sell_order_id = self.strategy_engine.limit_sell(self.symbol, high_price, sell_high_count,
                                                              complete_callback=self.order_deal)
 
-    def order_deal(self, order_id):
-        if order_id == self.buy_order_id:
-            self.base_price = self.strategy_engine.order_info(self.buy_order_id).price
+    def order_deal(self, order):
+        if order.order_id == self.buy_order_id:
+            self.base_price = order.price
             self.buy_order_id = None
             logger.info("buy order complete")
             self.on_base_change()
-        elif order_id == self.sell_order_id:
-            self.base_price = self.strategy_engine.order_info(self.sell_order_id).price
+        elif order.order_id == self.sell_order_id:
+            self.base_price = order.price
             self.sell_order_id = None
             logger.info("sell order complete")
             self.on_base_change()
