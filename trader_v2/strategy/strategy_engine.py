@@ -3,12 +3,14 @@
 为了方便回测以及做一堆乱七八糟的事，策略不直接和其他引擎交互，而是跟策略引擎进行交互
 """
 import logging
+import time
 from collections import defaultdict
 
 from trader_v2.event import Event, EVENT_HUOBI_SUBSCRIBE_TRADE, EVENT_HUOBI_MARKET_DETAIL_PRE, \
     EVENT_HUOBI_SUBSCRIBE_DEPTH, EVENT_HUOBI_DEPTH_PRE, EVENT_HUOBI_SUBSCRIBE_KLINE, EVENT_HUOBI_KLINE_PRE, \
-    EVENT_HUOBI_REQUEST_KLINE, EVENT_HUOBI_RESPONSE_KLINE_PRE
+    EVENT_HUOBI_REQUEST_KLINE, EVENT_HUOBI_RESPONSE_KLINE_PRE, EVENT_TIMER
 from trader_v2.trader_object import OrderData, BUY_LIMIT, SELL_LIMIT
+from trader_v2.util import DelayJobQueue
 
 logger = logging.getLogger("strategy.engine")
 
@@ -22,6 +24,7 @@ class StrategyEngine(object):
         self.subscribe_map = defaultdict(list)
         # 保存订单的信息
         self.order_center = {}
+        self.delay_job_queue = DelayJobQueue()
 
     # --------------------订阅相关接口---------------------
     def subscribe_market_trade(self, symbol, callback):
@@ -83,7 +86,6 @@ class StrategyEngine(object):
     def limit_buy(self, symbol, price, count, complete_callback=None):
         """
         下个限价买单，不管是否成交
-        :return: 限价买单的order id
         """
         buy_item = OrderData(symbol=symbol, order_type=BUY_LIMIT)
         buy_item.price = price
@@ -95,7 +97,6 @@ class StrategyEngine(object):
     def limit_sell(self, symbol, price, count, complete_callback=None):
         """
         下一个限价卖单，不管是否成交
-        :return: 限价卖单的order id
         """
         sell_item = OrderData(symbol=symbol, order_type=SELL_LIMIT)
         sell_item.price = price
@@ -107,23 +108,44 @@ class StrategyEngine(object):
     def cancel_order(self, order_id, callback=None):
         """
         取消订单
-        :param order_id: 
-        :param callback: 回调
-        :return: 
         """
         order = self.order_center[order_id]
         self.main_engine.cancel_order(order, callback)
 
     def send_orders_and_cancel(self, orders, callback):
         self.main_engine.send_orders_and_cancel(orders, callback)
+        
+    def order_info(self,order_id):
+        """
+        获取订单的详细信息
+        """
+        return self.order_center.get(order_id,None)
+
+    # ------------------------ 任务延迟执行相关 ------------------------------------
+    def init_delay_job(self):
+        self.event_engine.register(EVENT_TIMER, self.handle_delay_call)
+
+    def handle_delay_call(self, _):
+        for func, kwargs in self.delay_job_queue.pop_ready():
+            func(**kwargs)
+
+    def delay_call(self, func, kwargs, delay):
+        """
+        延迟执行，会在delay秒后执行func
+        """
+        self.delay_job_queue.add((func, kwargs), time.time() + delay)
 
     def append(self, strategy_class, kwargs):
+        """
+        添加一个策略并执行
+        """
         kwargs["strategy_engine"] = self
         strategy = strategy_class(**kwargs)
         strategy.start()
         self.strategies.append(strategy)
 
     def start(self):
+        self.init_delay_job()
         logger.info("strategy engine start ready")
 
     def stop(self):

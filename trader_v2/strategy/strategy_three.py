@@ -9,6 +9,9 @@
 
 再记： 在大盘爆炸的时候，如果没有及时撤离的话也也是会爆炸的 这个策略在时长波动的时候效果很不错，但是无法避免大盘爆炸。
 更需要的东西应该是在大盘爆炸的时候及时止损的东西
+
+增加一条规则：为了防止在短时间内（几秒）暴跌或暴涨造成的损失，增加如下规则
+在完成一笔交易后，立马在反方向下一单，相同方向延迟一段时间后下单
 """
 import logging
 
@@ -52,6 +55,9 @@ class StrategyThree(StrategyBase):
         self.buy_order_id = None
         self.sell_order_id = None
 
+        # 交易次数
+        self.loop_count = 0
+
     def start(self):
         StrategyBase.start(self)
         self.request_1min_kline(self.symbol)
@@ -70,46 +76,54 @@ class StrategyThree(StrategyBase):
 
     def on_market_trade(self, market_trade_item):
         self.last_trade_price = market_trade_item.price
-        # # 跌了x%
-        # if self.last_trade_price < self.base_price * (1 - self.x):
-        #     # 根据持仓决定买入的量
-        #     buy_count = int(min(self.per_count, self.account.position(self.quote_currency) / self.last_trade_price))
-        #     if buy_count < 1:
-        #         return
-        #     self.strategy_engine.limit_buy(self.symbol, self.last_trade_price, buy_count)
-        #     self.base_price = self.last_trade_price
-        # # 涨了x%
-        # if self.last_trade_price > self.base_price * (1 + self.x):
-        #     # 根据持仓决定卖出的量
-        #     sell_count = int(min(self.per_count, self.account.position(self.base_currency)))
-        #     if sell_count < 1:
-        #         return
-        #     self.strategy_engine.limit_sell(self.symbol, self.last_trade_price, sell_count)
-        #     self.base_price = self.last_trade_price
 
     def on_base_change(self):
         """
         在基准价格改变时调用这个方法
-        会先取消掉之前下的两个单（应该只有一个能成功执行），根据基准价格下两个新单
+        同一个方向的单需要过一会再下
         :return: 
         """
+        self.loop_count += 1
         logger.debug("on base change , now base is {base}".format(base=self.base_price))
-        # 取消之前下的单
+        # 上一个成交是买 马上下卖单，延迟下买单
+        if self.sell_order_id and not self.buy_order_id:
+            self.make_sell_order(self.loop_count)
+            self.strategy_engine.delay_call(self.make_buy_order, kwargs={"loop_count": self.loop_count}, delay=10)
+        if self.buy_order_id and not self.sell_order_id:
+            self.make_buy_order(self.loop_count)
+            self.strategy_engine.delay_call(self.make_sell_order, kwargs={"loop_count": self.loop_count}, delay=10)
+        # 初始化的状态 或者是在一个方向延迟订单还没下，另一个方向已经完成的情况，这种情况下会因为loop count而取消上一个延迟下单
+        if not self.buy_order_id and not self.sell_order_id:
+            self.make_buy_order(self.loop_count)
+            self.make_sell_order(self.loop_count)
+
+    def make_buy_order(self, loop_count):
+        if loop_count != self.loop_count:
+            logger.error("make buy order error , loop count error")
+            return
         if self.buy_order_id:
             self.strategy_engine.cancel_order(self.buy_order_id)
-        if self.sell_order_id:
-            self.strategy_engine.cancel_order(self.sell_order_id)
-        # 计算新单价格并下单
-        low_price = round(min(self.base_price * (1 - self.buy_x), self.last_trade_price),
+        low_price = round(min(self.base_price * (1 - self.buy_x), self.last_trade_price * (1 - self.buy_x / 2.0)),
                           self.account.price_precision(self.symbol))
-        high_price = round(max(self.base_price * (1 + self.sell_x), self.last_trade_price),
-                           self.account.price_precision(self.symbol))
-        buy_low_count = int(min(self.per_count * self.buy_x * 100, self.account.position(self.quote_currency) / low_price))
-        sell_high_count = int(min(self.per_count * self.sell_x * 100, self.account.position(self.base_currency)))
+        low_percent = (self.base_price - low_price) / self.base_price
+        buy_low_count = int(
+            min(self.per_count * low_percent * 100, self.account.position(self.quote_currency) / low_price))
         logger.info("send limit buy order , {symbol} price: {p} , count:{c}".format(symbol=self.symbol, p=low_price,
                                                                                     c=buy_low_count))
         self.buy_order_id = self.strategy_engine.limit_buy(self.symbol, low_price, buy_low_count,
                                                            complete_callback=self.order_deal)
+
+    def make_sell_order(self, loop_count):
+        if loop_count != self.loop_count:
+            logger.error("make buy order error , loop count error")
+            return
+        if self.sell_order_id:
+            self.strategy_engine.cancel_order(self.sell_order_id)
+        high_price = round(max(self.base_price * (1 + self.sell_x), self.last_trade_price * (1 + self.sell_x / 2.0)),
+                           self.account.price_precision(self.symbol))
+        high_percent = (high_price - self.base_price) / self.base_price
+        sell_high_count = int(min(self.per_count * high_percent * 100, self.account.position(self.base_currency)))
+
         logger.info("send limit sell order , {symbol} price: {p} , count:{c}".format(symbol=self.symbol, p=high_price,
                                                                                      c=sell_high_count))
         self.sell_order_id = self.strategy_engine.limit_sell(self.symbol, high_price, sell_high_count,
@@ -117,12 +131,14 @@ class StrategyThree(StrategyBase):
 
     def order_deal(self, order_id):
         if order_id == self.buy_order_id:
+            self.base_price = self.strategy_engine.order_info(self.buy_order_id).price
+            self.buy_order_id = None
             logger.info("buy order complete")
-            self.base_price = self.base_price * (1 - self.buy_x)
             self.on_base_change()
         elif order_id == self.sell_order_id:
+            self.base_price = self.strategy_engine.order_info(self.sell_order_id).price
+            self.sell_order_id = None
             logger.info("sell order complete")
-            self.base_price = self.base_price * (1 + self.sell_x)
             self.on_base_change()
         else:
             logger.error("order not exist")
