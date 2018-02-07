@@ -5,6 +5,7 @@
 
 import logging
 import time
+import json
 from queue import Queue, Empty
 from threading import Thread
 
@@ -65,7 +66,13 @@ class Querier(object):
         if order_id in self.__order_ids_info:
             interval, change_callback = self.__order_ids_info[order_id]
             order_info = self.huobi_api.order_info(order_id).get("data", {})
-            state = order_info.get("state", "")
+            state = order_info.get("state", None)
+            # 出现错误 直接丢回队列重试
+            if not state:
+                logger.error("querier job error , order_id : {order_id} , result:{r}".format(order_id=order_id,r=json.dumps(order_info)))
+                next_call_time = time.time() + interval
+                self.__delay_job_queue.add(order, next_call_time)
+                return
             # 订单完成，回调
             logger.debug("querier job , order id : {order_id} , state : {state}".format(order_id=order_id, state=state))
 
