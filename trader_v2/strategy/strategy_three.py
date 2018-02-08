@@ -106,8 +106,9 @@ class StrategyThree(StrategyBase):
         low_price = round(min(self.base_price * (1 - self.buy_x), self.last_trade_price * (1 - self.buy_x / 2.0)),
                           self.account.price_precision(self.symbol))
         low_percent = (self.base_price - low_price) / self.base_price
-        buy_low_count = int(
-            min(self.per_count * low_percent * 100, self.account.position(self.quote_currency) / low_price))
+        buy_low_count = round(
+            min(self.per_count * low_percent * 100, self.account.position(self.quote_currency) / low_price),
+            self.account.amount_precision(self.symbol))
         logger.info("send limit buy order , {symbol} price: {p} , count:{c}".format(symbol=self.symbol, p=low_price,
                                                                                     c=buy_low_count))
         self.buy_order_id = self.strategy_engine.limit_buy(self.symbol, low_price, buy_low_count,
@@ -122,7 +123,8 @@ class StrategyThree(StrategyBase):
         high_price = round(max(self.base_price * (1 + self.sell_x), self.last_trade_price * (1 + self.sell_x / 2.0)),
                            self.account.price_precision(self.symbol))
         high_percent = (high_price - self.base_price) / self.base_price
-        sell_high_count = int(min(self.per_count * high_percent * 100, self.account.position(self.base_currency)))
+        sell_high_count = round(min(self.per_count * high_percent * 100, self.account.position(self.base_currency)),
+                                self.account.amount_precision(self.symbol))
 
         logger.info("send limit sell order , {symbol} price: {p} , count:{c}".format(symbol=self.symbol, p=high_price,
                                                                                      c=sell_high_count))
