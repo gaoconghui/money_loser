@@ -4,10 +4,11 @@
 """
 import datetime
 import heapq
+import itertools
 import logging
 from collections import defaultdict
 
-from empyrical import alpha_beta, sharpe_ratio, max_drawdown
+from empyrical import max_drawdown
 from pandas import DataFrame
 
 from trader_v2.account import Account
@@ -127,7 +128,8 @@ class BackTestingEngine(object):
         all_kline.sort(key=lambda x: x.datetime)
         # 开始输入回测数据
         for bar in all_kline:
-            print(bar.datetime)
+            if logger.level == logging.DEBUG:
+                print(bar.datetime)
             # 返回交易数据（不过交易数据是假的）
             # 因为在在一个k线内会发生比较剧烈的变化，所以模拟的时长交易数据会做一个平滑的切换
             if self.now_date and bar.symbol in self.now_price:
@@ -178,23 +180,24 @@ class BackTestingEngine(object):
         self.stat["market_rate"] = (self.stat["market_balance"] - self.stat["market_balance"].shift(1)) / \
                                    self.stat["market_balance"].shift(1)
 
-        sharpe = sharpe_ratio(self.stat["strategy_rate"], self.stat["market_rate"])
-        alpha, beta = alpha_beta(self.stat["strategy_rate"], self.stat["market_rate"])
+        # sharpe = sharpe_ratio(self.stat["strategy_rate"], self.stat["market_rate"])
+        # alpha, beta = alpha_beta(self.stat["strategy_rate"], self.stat["market_rate"])
         max_dowm = max_drawdown(self.stat["strategy_rate"])
 
         logger.info("-----------------------stat-------------------------")
-        logger.info("夏普率(未换算天与年) : {sharpe}".format(sharpe=sharpe))
-        logger.info("alpha : {alpha} , beta : {beta}".format(alpha=alpha, beta=beta))
+        # logger.info("夏普率(未换算天与年) : {sharpe}".format(sharpe=sharpe))
+        # logger.info("alpha : {alpha} , beta : {beta}".format(alpha=alpha, beta=beta))
         logger.info("最大回撤 {down}".format(down=max_dowm))
         logger.info("盈利 {profit}".format(profit=(self.stat["strategy_balance"][-1] - self.stat["strategy_balance"][0]) /
                                                 self.stat["strategy_balance"][0]))
 
-        import matplotlib.pylab as plt
-        plt.plot(self.stat['strategy_balance'], color='r')
-        plt.plot(self.stat['market_balance'], color='g')
-        plt.show()
-        print(self.stat.tail(5))
-        print(self.stat.head(5))
+        if logger.level == logging.DEBUG:
+            import matplotlib.pylab as plt
+            plt.plot(self.stat['strategy_balance'], color='r')
+            plt.plot(self.stat['market_balance'], color='g')
+            plt.show()
+            print(self.stat.tail(5))
+            print(self.stat.head(5))
 
     def usdt_price(self, coin):
         if coin in self.now_price:
@@ -264,7 +267,7 @@ class DataSource(object):
 
     def load_1min_kline(self, symbol):
         if symbol not in self.kline_1min_cache:
-            self.kline_1min_cache[symbol] = get_kline_from_mongo(symbol=symbol, period="60min", size=2000)
+            self.kline_1min_cache[symbol] = get_kline_from_mongo(symbol=symbol, period="1min", size=2000)
         for b in self.kline_1min_cache[symbol]:
             bar = BarData()
             bar.symbol = symbol
@@ -310,15 +313,14 @@ class Trader(object):
         return order
 
     def limit_buy(self, order):
-        print("limit buy")
         # 先把钱扣了
-        base, quote = account.split_symbol(order.symbol)
+        base, quote = self.account.split_symbol(order.symbol)
         self.account.trade(quote, -order.amount * order.price)
         self.account.trade(base, order.amount * (1 - self.charge))
         return order
 
     def limit_sell(self, order):
-        base, quote = account.split_symbol(order.symbol)
+        base, quote = self.account.split_symbol(order.symbol)
         sell_money = order.amount * order.price
         self.account.trade(quote, sell_money * (1 - self.charge))
         self.account.trade(base, -order.amount)
@@ -327,7 +329,7 @@ class Trader(object):
     def cancel_order(self, order_id, callback=None):
         order = self.order_id_map.get(order_id)
         if order in self.order_center[order.symbol]:
-            base, quote = account.split_symbol(order.symbol)
+            base, quote = self.account.split_symbol(order.symbol)
             if order.order_type == BUY_LIMIT:
                 self.account.trade(quote, order.amount * order.price)
                 self.account.trade(base, -order.amount * (1 - self.charge))
@@ -369,8 +371,9 @@ class Trader(object):
             "buy limit , symbol : {symbol} , price : {price} ,count:{count}".format(
                 symbol=order.symbol,
                 count=order.amount, price=order.price))
-        if order.order_id in self.order_callback:
-            self.order_callback[order.order_id](order.order_id)
+        callback = self.order_callback.get(order.order_id, None)
+        if callback:
+            self.order_callback[order.order_id](order)
 
     def sell_limit_deal(self, order):
         self.order_center[order.symbol].remove(order)
@@ -378,8 +381,9 @@ class Trader(object):
             "sell limit , symbol : {symbol} , price : {price}, count:{count}".format(
                 symbol=order.symbol, count=order.amount,
                 price=order.price))
-        if order.order_id in self.order_callback:
-            self.order_callback[order.order_id](order.order_id)
+        callback = self.order_callback.get(order.order_id, None)
+        if callback:
+            self.order_callback[order.order_id](order)
 
     def order_info(self, order_id):
         return self.order_id_map.get(order_id)
@@ -389,32 +393,35 @@ class NotSupportError(Exception):
     pass
 
 
-if __name__ == '__main__':
-    # result = {}
-    # logger.setLevel(logging.ERROR)
-    # for sell_x, buy_x in itertools.product(range(1, 10), range(1, 10)):
-    #     account = Account()
-    #     account.init_position({"btc": 0.05, "swftc": 15000})
-    #     # account.init_position({"usdt": 1300, "btc": 0.1})
-    #     engine = BackTestingEngine(account)
-    #     # strategy = StrategyTwo(engine, account, ["btcusdt"])
-    #     strategy = StrategyThree(engine, account, symbol="swftcbtc", sell_x=sell_x, buy_x=buy_x, per_count=250)
-    #     strategy.start()
-    #     engine.start_test()
-    #     engine.stop()
-    #     stat = engine.stat
-    #     profit = (stat["strategy_balance"][-1] - stat["strategy_balance"][0]) / stat["strategy_balance"][0]
-    #     result[(sell_x, buy_x)] = profit
-    #     print sell_x,buy_x,profit
-    # print result
-
+def run_back(position, strategy_cls, kwargs):
     account = Account()
-    account.init_position({"swftc": 5000, "btc": 0.1})
-    # account.init_position({"usdt": 1300, "btc": 0.1})
+    account.init_position(position)
     engine = BackTestingEngine(account)
-    # strategy = StrategyTwo(engine, account, ["btcusdt"])
-    strategy = StrategyThree(engine, account, symbol="swftcbtc", sell_x=8, buy_x=7, per_count=250)
-    # strategy = StrategyFive(engine, account, symbols=["swftcbtc"], all_money=0.5, N=2.5)
+    kwargs['strategy_engine'] = engine
+    kwargs['account'] = account
+    strategy = strategy_cls(**kwargs)
     strategy.start()
     engine.start_test()
     engine.stop()
+    stat = engine.stat
+    profit = (stat["strategy_balance"][-1] - stat["strategy_balance"][0]) / stat["strategy_balance"][0]
+    return profit
+
+
+def optimize():
+    logger.setLevel(logging.ERROR)
+    result = {}
+    position = {"eth": 0.9, "usdt": 4000}
+    for sell_x, buy_x in itertools.product(range(1, 10), range(1, 10)):
+        profit = run_back(position, StrategyThree,
+                          {"symbol": "ethusdt", "sell_x": sell_x, "buy_x": buy_x, "per_count": 0.04})
+        result[(sell_x, buy_x)] = profit
+        print(sell_x, buy_x, profit)
+    print(result)
+
+
+if __name__ == '__main__':
+    # position = {"eth": 0.9, "usdt": 4000}
+    # kwargs = {"sell_x": 5, "buy_x": 5, "per_count": 0.04, 'symbol': "ethusdt"}
+    # run_back_test(position, StrategyThree, kwargs)
+    optimize()
