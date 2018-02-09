@@ -65,6 +65,8 @@ SELL_LIMIT = "sell-limit"
 SELL_MARKET = "sell-market"
 
 # order status 状态与火币网的状态保持一致
+# 尚未提交
+PRE_SUBMITTED = "pre_submitted"
 # 已提交
 SUBMITTED = "submitted"
 # 部分成交
@@ -90,7 +92,7 @@ class OrderData(object):
         self.order_id = EMPTY_INT
 
         # 订单状态
-        self.order_status = EMPTY_STRING
+        self.order_status = PRE_SUBMITTED
         self.create_time = datetime.datetime.now()
         self._cancel_time = None
 

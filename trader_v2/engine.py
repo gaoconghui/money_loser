@@ -4,8 +4,8 @@
 """
 import logging
 import time
-from queue import Queue, Empty
 from collections import defaultdict
+from queue import Queue, Empty
 from threading import Thread
 
 from trader_v2.account import Account
@@ -15,6 +15,7 @@ from trader_v2.market import HuobiMarket
 from trader_v2.settings import DELAY_POLICY
 from trader_v2.strategy.strategy_engine import StrategyEngine
 from trader_v2.trader import HuobiTrader
+from trader_v2.trader_object import FILLED
 
 logger = logging.getLogger("engine")
 
@@ -186,6 +187,9 @@ class MainEngine(object):
         self.running = True
         self.account = None
 
+        # 订单状态改变回调 (order_type,job_id) : callback
+        self.order_change_callback = defaultdict(set)
+
     def start_markets(self):
         huobi_market = HuobiMarket(self.event_engine)
         huobi_market.start()
@@ -276,11 +280,29 @@ class MainEngine(object):
         self.event_engine.stop()
         self.running = False
 
+    # -------------------------订单相关-----------------------------
     def send_orders_and_cancel(self, orders, callback):
         self.trader.send_and_cancel_orders(orders=orders, callback=callback)
 
-    def send_order(self, order, complete_callback):
-        return self.trader.send_order(order, complete_callback)
+    def send_order(self, order, on_order_complete_callback):
+        self.trader.send_order(order)
+        self.register_querier(order, FILLED, on_order_complete_callback)
+        return order
 
     def cancel_order(self, order, callback):
         self.trader.cancel_order(order, callback)
+
+    def register_querier(self, order, order_type, callback):
+        """
+        注册订单改变回调
+        """
+        key = (order_type, order.job_id)
+        self.order_change_callback[key].add(callback)
+        self.trader.register_order_query(order, 5, self.on_order_change)
+
+    def on_order_change(self, order):
+        logger.debug("on order change")
+        key = (order.order_type, order.job)
+        if key in self.order_change_callback:
+            for callback in self.order_change_callback[key]:
+                callback(order)

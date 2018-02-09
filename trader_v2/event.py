@@ -24,6 +24,9 @@ EVENT_HUOBI_KLINE_PRE = "huobi_kline_"
 # 查询火币网k线图返回 EVENT_HUOBI_RESPONSE_KLINE_PRE_symbol_period
 EVENT_HUOBI_RESPONSE_KLINE_PRE = "huobi_response_kline_"
 
+# 订单信息改变推送
+EVENT_ORDER_CHANGE = "order change"
+
 
 class Event:
     """事件对象"""
