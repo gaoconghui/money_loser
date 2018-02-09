@@ -3,6 +3,7 @@
 对huobi api用dataframe做下包装
 """
 import pandas as pd
+import pymongo
 from pandas import DataFrame
 from pymongo import MongoClient
 
@@ -31,9 +32,9 @@ def init_mongo(coll_name):
     return coll
 
 
-def get_kline_from_mongo(symbol, period, size=2000):
+def get_kline_from_mongo(symbol, period, size=5000):
     coll = init_mongo("kline_" + period)
-    return list(coll.find({"symbol" : symbol}).sort([("ts" , -1)]).limit(size))
+    return list(coll.find({"symbol": symbol}).sort([("ts", pymongo.ASCENDING)]).limit(size))
 
 
 def dump_kline(symbol, period, size, overload=True):
@@ -54,4 +55,5 @@ def dump_kline(symbol, period, size, overload=True):
 
 
 if __name__ == '__main__':
-    print(dump_kline("btcusdt", "15min", 2000))
+    print(dump_kline("swftcbtc", "1min", 2000))
+    # print(len(get_kline_from_mongo("qspbtc", "15min", 5000)))
