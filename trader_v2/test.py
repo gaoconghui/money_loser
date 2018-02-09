@@ -12,7 +12,7 @@ def t():
     from datetime import datetime
 
     def simple_test(event):
-        print event
+        print(event)
         print(u'处理每秒触发的计时器事件：{}'.format(str(datetime.now())))
 
     ee = EventEngine()
@@ -20,11 +20,11 @@ def t():
     _type = "EVENT_BTC"
 
     def process_btc_event(event):
-        print event.dict_
+        print(event.dict_)
 
     def process_btc_event2(event):
         time.sleep(1)
-        print "event2"
+        print("event2")
 
     ee.register(_type, process_btc_event)
     ee.register(_type, process_btc_event2)
@@ -46,7 +46,7 @@ def market_test():
     engine.put(event_sub)
     type_ = EVENT_HUOBI_MARKET_DETAIL_PRE + "btcusdt"
     def fun(event):
-        print event.dict_
+        print(event.dict_)
     engine.register(type_,fun)
 
 
