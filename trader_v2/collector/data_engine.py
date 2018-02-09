@@ -2,7 +2,7 @@
 from collections import defaultdict
 
 from trader_v2.collector.database import MongoDatabase
-from trader_v2.event import EVENT_HUOBI_DEPTH_PRE, Event, EVENT_HUOBI_SUBSCRIBE_DEPTH
+from trader_v2.event import EVENT_HUOBI_DEPTH_PRE, Event, EVENT_HUOBI_SUBSCRIBE_DEPTH, EVENT_ORDER_CHANGE
 
 
 class DataEngine(object):
@@ -17,7 +17,7 @@ class DataEngine(object):
         self.mongo_db.start()
 
     def append(self, collector_cls, collector_kwargs):
-        collector_kwargs['engine'] = self
+        collector_kwargs['data_engine'] = self
         collector_kwargs["database"] = self.mongo_db
         collector = collector_cls(**collector_kwargs)
         collector.start()
@@ -41,6 +41,10 @@ class DataEngine(object):
             self.event_engine.put(event)
             self.event_engine.register(type_, self.on_callback)
         self.subscribe_map[type_].append(callback)
+
+    def subscribe_order_change(self, callback):
+        self.event_engine.register(EVENT_ORDER_CHANGE, self.on_callback)
+        self.subscribe_map[EVENT_ORDER_CHANGE].append(callback)
 
     def on_callback(self, event):
         market_trade_item = event.dict_['data']

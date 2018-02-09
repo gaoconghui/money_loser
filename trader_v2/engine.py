@@ -10,7 +10,8 @@ from threading import Thread
 
 from trader_v2.account import Account
 from trader_v2.collector.data_engine import DataEngine
-from trader_v2.event import EVENT_TIMER, Event, EVENT_HEARTBEAT
+from trader_v2.collector.order_collector import OrderCollector
+from trader_v2.event import EVENT_TIMER, Event, EVENT_HEARTBEAT, EVENT_ORDER_CHANGE
 from trader_v2.market import HuobiMarket
 from trader_v2.settings import DELAY_POLICY
 from trader_v2.strategy.strategy_engine import StrategyEngine
@@ -217,6 +218,12 @@ class MainEngine(object):
             return False
         self.data_engine.append(collector_cls, collector_kwargs)
 
+    def start_collectors(self):
+        """
+        启动一些跟策略引擎依赖的收集器
+        """
+        self.append_collector(OrderCollector, {})
+
     def start_account(self):
         self.account = Account("huobi")
 
@@ -235,22 +242,10 @@ class MainEngine(object):
         collector ： 用来单纯的收集数据
         all ： 都启动
         """
-        if mode == "strategy":
-            self._start_for_strategy()
+        if mode == "strategy" or mode == "all":
+            self._start_all()
         if mode == "collector":
             self._start_for_collector()
-        if mode == "all":
-            self._start_all()
-
-    def _start_for_strategy(self):
-        # 按策略方式启动
-        # 顺序不能变 先启动事件驱动引擎，然后详情获取，交易系统，最后启动策略系统
-        self.event_engine.start()
-        self.start_account()
-        self.start_markets()
-        self.start_trader()
-        self.start_strategy_engine()
-        self.start_heartbeat()
 
     def _start_for_collector(self):
         self.event_engine.start()
@@ -258,12 +253,15 @@ class MainEngine(object):
         self.start_data_engine()
 
     def _start_all(self):
+        # 按策略方式启动
+        # 顺序不能变 先启动事件驱动引擎，然后详情获取，交易系统，最后启动策略系统
         self.event_engine.start()
         self.start_account()
         self.start_markets()
+        self.start_data_engine()
+        self.start_collectors()
         self.start_trader()
         self.start_strategy_engine()
-        self.start_data_engine()
         self.start_heartbeat()
 
     def stop(self):
@@ -302,7 +300,10 @@ class MainEngine(object):
 
     def on_order_change(self, order):
         logger.debug("on order change")
-        key = (order.order_type, order.job)
+        key = (order.order_type, order.job_id)
+        event = Event(EVENT_ORDER_CHANGE)
+        event.dict_ = {"data": order}
+        self.event_engine.put(event)
         if key in self.order_change_callback:
             for callback in self.order_change_callback[key]:
                 callback(order)

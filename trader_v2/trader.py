@@ -87,9 +87,9 @@ class Querier(object):
             need_next_loop = True
 
             # 如果发生了成交
-            field_cash_amount = order_info["field-cash-amount"]
-            field_amount = order_info["field-amount"]
-            field_fees = order_info["field-fees"]
+            field_cash_amount = float(order_info["field-cash-amount"])
+            field_amount = float(order_info["field-amount"])
+            field_fees = float(order_info["field-fees"])
 
             if (order.field_amount, order.field_fees, order.field_cash_amount) != (
                     field_amount, field_fees, field_cash_amount):
@@ -117,8 +117,8 @@ class Querier(object):
             for order in self.__delay_job_queue.pop_ready():
                 try:
                     self.do_query_job(order)
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(e, exc_info=True)
             time.sleep(1)
 
 
@@ -155,7 +155,6 @@ class Trader(object):
                 result = func(**kwargs)
                 if callback:
                     callback(result)
-
             except Empty:
                 pass
 

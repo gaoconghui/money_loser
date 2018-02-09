@@ -4,8 +4,8 @@ logger = logging.getLogger("collector.base")
 
 
 class BaseCollector(object):
-    def __init__(self, event_engine, database):
-        self.event_engine = event_engine
+    def __init__(self, data_engine, database):
+        self.data_engine = data_engine
         self.database = database
         self.subscribe_map = {}
 
@@ -19,7 +19,7 @@ class BaseCollector(object):
         """
         订阅五档行情数据
         """
-        self.event_engine.subscribe_depth(symbol, callback=self.on_depth_callback)
+        self.data_engine.subscribe_depth(symbol, callback=self.on_depth_callback)
 
     def on_depth_callback(self, depth_item):
         pass

@@ -11,8 +11,8 @@ logger = logging.getLogger("collector.depth")
 
 
 class DepthCollector(BaseCollector):
-    def __init__(self, engine, database, symbols):
-        super(DepthCollector, self).__init__(engine, database)
+    def __init__(self, data_engine, database, symbols):
+        super(DepthCollector, self).__init__(data_engine, database)
         self.coll = self.database.get_coll(CollectorSetting.mongo_depth_coll)
         self.symbols = symbols
 

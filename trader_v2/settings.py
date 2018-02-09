@@ -23,3 +23,4 @@ class CollectorSetting(object):
     mongo_host = "localhost"
     mongo_db = "huobi"
     mongo_depth_coll = "depth"
+    mongo_order_coll = "order"
