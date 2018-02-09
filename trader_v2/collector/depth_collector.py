@@ -4,31 +4,10 @@
 """
 import logging
 
+from trader_v2.collector.base import BaseCollector
 from trader_v2.settings import CollectorSetting
 
 logger = logging.getLogger("collector.depth")
-
-
-class BaseCollector(object):
-    def __init__(self, engine, database):
-        self.event_engine = engine
-        self.database = database
-        self.subscribe_map = {}
-
-    def start(self):
-        logger.info("start collector")
-
-    def stop(self):
-        logger.info("stop collector")
-
-    def subscribe_depth(self, symbol):
-        """
-        订阅五档行情数据
-        """
-        self.event_engine.subscribe_depth(symbol, callback=self.on_depth_callback)
-
-    def on_depth_callback(self, depth_item):
-        pass
 
 
 class DepthCollector(BaseCollector):

@@ -9,7 +9,7 @@ from collections import defaultdict
 from threading import Thread
 
 from trader_v2.account import Account
-from trader_v2.collector.engine import DataEngine
+from trader_v2.collector.data_engine import DataEngine
 from trader_v2.event import EVENT_TIMER, Event, EVENT_HEARTBEAT
 from trader_v2.market import HuobiMarket
 from trader_v2.settings import DELAY_POLICY

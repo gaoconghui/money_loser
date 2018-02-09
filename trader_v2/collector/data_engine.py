@@ -10,15 +10,15 @@ class DataEngine(object):
         self.event_engine = event_engine
         self.collectors = []
         self.subscribe_map = defaultdict(list)
-        self.mongo = None
+        self.mongo_db = None
 
     def start_database(self):
-        self.mongo = MongoDatabase()
-        self.mongo.start()
+        self.mongo_db = MongoDatabase()
+        self.mongo_db.start()
 
     def append(self, collector_cls, collector_kwargs):
         collector_kwargs['engine'] = self
-        collector_kwargs["database"] = self.mongo
+        collector_kwargs["database"] = self.mongo_db
         collector = collector_cls(**collector_kwargs)
         collector.start()
         self.collectors.append(collector)
@@ -27,8 +27,8 @@ class DataEngine(object):
         self.start_database()
 
     def stop(self):
-        if self.mongo:
-            self.mongo.close()
+        if self.mongo_db:
+            self.mongo_db.close()
 
     def subscribe_depth(self, symbol, callback):
         """
