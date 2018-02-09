@@ -8,11 +8,13 @@ import hashlib
 import hmac
 import json
 import logging
+from collections import defaultdict
 from urllib import parse
 
 import requests
 from requests.adapters import HTTPAdapter
 
+from trader_v2.secret_config import huobi_access_key, huobi_secret_key
 from trader_v2.settings import DELAY_POLICY
 from trader_v2.util import timeme, ThreadWithReturnValue
 
@@ -436,14 +438,21 @@ def timestamp():
 
 
 def show_balance_usdt(trader):
-    balance = trader.get_balance()
-    balance = {item['currency']: float(item['balance']) for item in balance['data']['list'] if
-               float(item['balance']) > 0}
+    position = trader.get_balance()
+    balance = defaultdict(int)
+    for item in position['data']['list']:
+        if float(item["balance"]) > 0:
+            balance[item['currency']] += float(item['balance'])
     btc_usdt = price("btcusdt")
     balance_list = []
     for coin, count in balance.items():
-        btc_price = price(coin + "btc") * btc_usdt
-        balance_list.append((coin, btc_price * count, count))
+        if coin == "usdt":
+            balance_list.append((coin, 1 * count, count))
+        elif coin == "btc":
+            balance_list.append((coin, btc_usdt * count, count))
+        else:
+            btc_price = price(coin + "btc") * btc_usdt
+            balance_list.append((coin, btc_price * count, count))
     balance_list.sort(key=lambda x: -x[1])
     for item in balance_list:
         print(item)
@@ -456,4 +465,8 @@ if __name__ == '__main__':
     # t1 = time.time()
     # print get_depth("waxbtc", depth_type="step0")
     # print time.time() - t1
-    print(get_symbols())
+    # print(get_symbols())
+    api = HuobiApi(access_key=huobi_access_key, secret_key=huobi_secret_key)
+    # print(api.order_info("1206551531"))
+
+    show_balance_usdt(api)
