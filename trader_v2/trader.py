@@ -130,11 +130,10 @@ class Trader(object):
     def __init__(self, event_engine, account):
         self.event_engine = event_engine
         self.account = account
-        self.req_id = 0
         self.running = True
         self.__processor = Thread(target=self.__run)
         self.__job_queue = Queue()
-        self.__job_id = 0
+        self.__job_id = int(time.time() * 1000)
 
     def start(self):
         self.update_position()

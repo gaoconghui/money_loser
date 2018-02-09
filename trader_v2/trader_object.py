@@ -66,7 +66,7 @@ SELL_MARKET = "sell-market"
 
 # order status 状态与火币网的状态保持一致
 # 尚未提交
-PRE_SUBMITTED = "pre_submitted"
+PRE_SUBMITTED = "pre-submitted"
 # 已提交
 SUBMITTED = "submitted"
 # 部分成交

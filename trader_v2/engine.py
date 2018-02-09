@@ -284,6 +284,7 @@ class MainEngine(object):
 
     def send_order(self, order, on_order_complete_callback):
         self.trader.send_order(order)
+        self.on_order_change(order)
         self.register_querier(order, FILLED, on_order_complete_callback)
         return order
 
