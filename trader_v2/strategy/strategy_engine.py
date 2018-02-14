@@ -181,6 +181,7 @@ class StrategyCache(object):
         key = "strategy:" + strategy_name
         value = self.redis_cache.get(key)
         if value:
+            self.redis_cache.delete(key)
             return json.loads(value)
         else:
             return None

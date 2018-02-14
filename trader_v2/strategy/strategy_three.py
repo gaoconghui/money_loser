@@ -63,6 +63,17 @@ class StrategyThree(StrategyBase):
         self.request_1min_kline(self.symbol)
         self.ready = False
 
+    def persist_config(self):
+        config = {"base_price": self.base_price}
+        return config
+
+    def reload_config(self, config):
+        """
+        优先使用传入的base price
+        """
+        if not self.base_price:
+            self.base_price = config["base_price"]
+
     def on_1min_kline_req(self, klines):
         bar_last = klines[-1]
         if not self.base_price:
