@@ -2,13 +2,17 @@
 """
 为了方便回测以及做一堆乱七八糟的事，策略不直接和其他引擎交互，而是跟策略引擎进行交互
 """
+import json
 import logging
 import time
 from collections import defaultdict
 
+import redis
+
 from trader_v2.event import Event, EVENT_HUOBI_SUBSCRIBE_TRADE, EVENT_HUOBI_MARKET_DETAIL_PRE, \
     EVENT_HUOBI_SUBSCRIBE_DEPTH, EVENT_HUOBI_DEPTH_PRE, EVENT_HUOBI_SUBSCRIBE_KLINE, EVENT_HUOBI_KLINE_PRE, \
     EVENT_HUOBI_REQUEST_KLINE, EVENT_HUOBI_RESPONSE_KLINE_PRE, EVENT_TIMER
+from trader_v2.settings import CacheSetting
 from trader_v2.trader_object import OrderData, BUY_LIMIT, SELL_LIMIT
 from trader_v2.util import DelayJobQueue
 
@@ -19,12 +23,14 @@ class StrategyEngine(object):
     def __init__(self, main_engine, event_engine):
         self.main_engine = main_engine
         self.event_engine = event_engine
-        self.strategies = []
+        self.strategies = {}
 
         self.subscribe_map = defaultdict(list)
         # 保存订单的信息
         self.order_center = {}
         self.delay_job_queue = DelayJobQueue()
+
+        self.strategy_cache = StrategyCache()
 
     # --------------------订阅相关接口---------------------
     def subscribe_market_trade(self, symbol, callback):
@@ -114,12 +120,12 @@ class StrategyEngine(object):
 
     def send_orders_and_cancel(self, orders, callback):
         self.main_engine.send_orders_and_cancel(orders, callback)
-        
-    def order_info(self,order_id):
+
+    def order_info(self, order_id):
         """
         获取订单的详细信息
         """
-        return self.order_center.get(order_id,None)
+        return self.order_center.get(order_id, None)
 
     # ------------------------ 任务延迟执行相关 ------------------------------------
     def init_delay_job(self):
@@ -139,15 +145,49 @@ class StrategyEngine(object):
         """
         添加一个策略并执行
         """
+        strategy_name = strategy_class.__name__
+        if "strategy_name" in kwargs:
+            strategy_name = kwargs.pop("strategy_name")
         kwargs["strategy_engine"] = self
         strategy = strategy_class(**kwargs)
+        self.strategies[strategy_name] = strategy
+        strategy_config = self.strategy_cache.load_strategy(strategy_name)
+        # 先加载缓存 后启动策略
+        if strategy_config:
+            logger.info(
+                "load strategy config from cache , "
+                "strategy_name : {name} , config:{config}".format(name=strategy_name,
+                                                                  config=json.dumps(strategy_config)))
+            strategy.reload_config(strategy_config)
         strategy.start()
-        self.strategies.append(strategy)
 
     def start(self):
         self.init_delay_job()
         logger.info("strategy engine start ready")
 
     def stop(self):
-        for strategy in self.strategies:
+        for name, strategy in self.strategies.items():
+            config = strategy.persist_config()
+            self.strategy_cache.persist_strategy(name, config)
             strategy.stop()
+
+
+class StrategyCache(object):
+    def __init__(self):
+        self.redis_cache = redis.StrictRedis(host=CacheSetting.redis_host, port=CacheSetting.redis_port,
+                                             db=CacheSetting.redis_db)
+
+    def load_strategy(self, strategy_name):
+        key = "strategy:" + strategy_name
+        value = self.redis_cache.get(key)
+        if value:
+            return json.loads(value)
+        else:
+            return None
+
+    def persist_strategy(self, strategy_name, value_dict):
+        if not value_dict:
+            return
+        key = "strategy:" + strategy_name
+        value = json.dumps(value_dict)
+        self.redis_cache.set(key, value)

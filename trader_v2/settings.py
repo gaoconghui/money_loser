@@ -24,3 +24,10 @@ class CollectorSetting(object):
     mongo_db = "huobi"
     mongo_depth_coll = "depth"
     mongo_order_coll = "order"
+
+
+class CacheSetting(object):
+    redis_host = "localhost"
+    redis_port = 6379
+    redis_db = 13
+    strategy_cache_name = "strategy_config"

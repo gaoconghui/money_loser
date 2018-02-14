@@ -67,5 +67,17 @@ class StrategyBase(object):
     def on_1day_kline_req(self, klines):
         print(klines)
 
+    def reload_config(self, config):
+        """
+        重载配置
+        """
+        pass
+
+    def persist_config(self):
+        """
+        导出配置
+        """
+        pass
+
     def stop(self):
         logger.info("close strategy {name}".format(name=self.__name__))
