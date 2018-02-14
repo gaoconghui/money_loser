@@ -76,14 +76,14 @@ class BackTestingEngine(object):
         buy_item.price = price
         buy_item.amount = count
         order = self.trader.send_order(buy_item, complete_callback)
-        return order.order_id
+        return order
 
     def limit_sell(self, symbol, price, count=None, complete_callback=None):
         sell_item = OrderData(symbol=symbol, order_type=SELL_LIMIT)
         sell_item.price = price
         sell_item.amount = count
         order = self.trader.send_order(sell_item, complete_callback)
-        return order.job_id
+        return order
 
     def cancel_order(self, order_id, callback=None):
         self.trader.cancel_order(order_id, callback)
@@ -267,7 +267,7 @@ class DataSource(object):
 
     def load_1min_kline(self, symbol):
         if symbol not in self.kline_1min_cache:
-            self.kline_1min_cache[symbol] = get_kline_from_mongo(symbol=symbol, period="1min", size=2000)
+            self.kline_1min_cache[symbol] = get_kline_from_mongo(symbol=symbol, period="15min", size=2000)
         for b in self.kline_1min_cache[symbol]:
             bar = BarData()
             bar.symbol = symbol
@@ -421,7 +421,7 @@ def optimize():
 
 
 if __name__ == '__main__':
-    # position = {"eth": 0.9, "usdt": 4000}
-    # kwargs = {"sell_x": 5, "buy_x": 5, "per_count": 0.04, 'symbol': "ethusdt"}
-    # run_back_test(position, StrategyThree, kwargs)
-    optimize()
+    position = {"swftc": 30000, "btc": 0.5}
+    kwargs = {"sell_x": 1, "buy_x": 1, "per_count": 3000, 'symbol': "swftcbtc"}
+    run_back(position, StrategyThree, kwargs)
+    # optimize()

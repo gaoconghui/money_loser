@@ -98,7 +98,7 @@ class StrategyEngine(object):
         buy_item.amount = count
         order = self.main_engine.send_order(buy_item, complete_callback)
         self.order_center[order.job_id] = order
-        return order.job_id
+        return order
 
     def limit_sell(self, symbol, price, count, complete_callback=None):
         """
@@ -109,7 +109,7 @@ class StrategyEngine(object):
         sell_item.amount = count
         order = self.main_engine.send_order(sell_item, complete_callback)
         self.order_center[order.job_id] = order
-        return order.job_id
+        return order
 
     def cancel_order(self, order_id, callback=None):
         """

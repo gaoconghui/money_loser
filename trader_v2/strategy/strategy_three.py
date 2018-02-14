@@ -52,8 +52,8 @@ class StrategyThree(StrategyBase):
         self.ready = False
         self.base_currency, self.quote_currency = account.split_symbol(symbol)
 
-        self.buy_order_id = None
-        self.sell_order_id = None
+        self.buy_order = None
+        self.sell_order = None
 
         # 交易次数
         self.loop_count = 0
@@ -71,7 +71,7 @@ class StrategyThree(StrategyBase):
         self.ready = True
         self.subscribe_market_trade(self.symbol)
 
-        if not self.buy_order_id or not self.sell_order_id:
+        if not self.buy_order or not self.sell_order:
             self.on_base_change()
 
     def on_market_trade(self, market_trade_item):
@@ -86,14 +86,14 @@ class StrategyThree(StrategyBase):
         self.loop_count += 1
         logger.debug("on base change , now base is {base}".format(base=self.base_price))
         # 上一个成交是买 马上下卖单，延迟下买单
-        if self.sell_order_id and not self.buy_order_id:
+        if self.sell_order and not self.buy_order:
             self.make_sell_order(self.loop_count)
             self.strategy_engine.delay_call(self.make_buy_order, kwargs={"loop_count": self.loop_count}, delay=10)
-        if self.buy_order_id and not self.sell_order_id:
+        if self.buy_order and not self.sell_order:
             self.make_buy_order(self.loop_count)
             self.strategy_engine.delay_call(self.make_sell_order, kwargs={"loop_count": self.loop_count}, delay=10)
         # 初始化的状态 或者是在一个方向延迟订单还没下，另一个方向已经完成的情况，这种情况下会因为loop count而取消上一个延迟下单
-        if not self.buy_order_id and not self.sell_order_id:
+        if not self.buy_order and not self.sell_order:
             self.make_buy_order(self.loop_count)
             self.make_sell_order(self.loop_count)
 
@@ -101,8 +101,8 @@ class StrategyThree(StrategyBase):
         if loop_count != self.loop_count:
             logger.error("make buy order error , loop count error")
             return
-        if self.buy_order_id:
-            self.strategy_engine.cancel_order(self.buy_order_id)
+        if self.buy_order:
+            self.strategy_engine.cancel_order(self.buy_order)
         logger.debug("last trade price : {p}".format(p=self.last_trade_price))
         low_price = round(min(self.base_price * (1 - self.buy_x), self.last_trade_price * (1 - self.buy_x / 2.0)),
                           self.account.price_precision(self.symbol))
@@ -112,15 +112,15 @@ class StrategyThree(StrategyBase):
             self.account.amount_precision(self.symbol))
         logger.info("send limit buy order , {symbol} price: {p} , count:{c}".format(symbol=self.symbol, p=low_price,
                                                                                     c=buy_low_count))
-        self.buy_order_id = self.strategy_engine.limit_buy(self.symbol, low_price, buy_low_count,
-                                                           complete_callback=self.order_deal)
+        self.buy_order = self.strategy_engine.limit_buy(self.symbol, low_price, buy_low_count,
+                                                        complete_callback=self.order_deal)
 
     def make_sell_order(self, loop_count):
         if loop_count != self.loop_count:
             logger.error("make buy order error , loop count error")
             return
-        if self.sell_order_id:
-            self.strategy_engine.cancel_order(self.sell_order_id)
+        if self.sell_order:
+            self.strategy_engine.cancel_order(self.sell_order.job_id)
         logger.debug("last trade price : {p}".format(p=self.last_trade_price))
         high_price = round(max(self.base_price * (1 + self.sell_x), self.last_trade_price * (1 + self.sell_x / 2.0)),
                            self.account.price_precision(self.symbol))
@@ -130,18 +130,18 @@ class StrategyThree(StrategyBase):
 
         logger.info("send limit sell order , {symbol} price: {p} , count:{c}".format(symbol=self.symbol, p=high_price,
                                                                                      c=sell_high_count))
-        self.sell_order_id = self.strategy_engine.limit_sell(self.symbol, high_price, sell_high_count,
-                                                             complete_callback=self.order_deal)
+        self.sell_order = self.strategy_engine.limit_sell(self.symbol, high_price, sell_high_count,
+                                                          complete_callback=self.order_deal)
 
     def order_deal(self, order):
-        if order.job_id == self.buy_order_id:
+        if order.job_id == self.buy_order.job_id:
             self.base_price = order.price
-            self.buy_order_id = None
+            self.buy_order = None
             logger.info("buy order complete")
             self.on_base_change()
-        elif order.job_id == self.sell_order_id:
+        elif order.job_id == self.sell_order.job_id:
             self.base_price = order.price
-            self.sell_order_id = None
+            self.sell_order = None
             logger.info("sell order complete")
             self.on_base_change()
         else:
@@ -153,10 +153,10 @@ class StrategyThree(StrategyBase):
         :return: 
         """
         logger.info("starting close")
-        if self.buy_order_id:
+        if self.buy_order:
             logger.info("cancel buy order")
-            self.strategy_engine.cancel_order(self.buy_order_id)
-        if self.sell_order_id:
+            self.strategy_engine.cancel_order(self.buy_order.job_id)
+        if self.sell_order:
             logger.info("cancel sell order")
-            self.strategy_engine.cancel_order(self.sell_order_id)
+            self.strategy_engine.cancel_order(self.sell_order.job_id)
         StrategyBase.stop(self)
