@@ -200,13 +200,13 @@ class MainEngine(object):
         self.strategy_engine = StrategyEngine(main_engine=self, event_engine=self.event_engine)
         self.strategy_engine.start()
 
-    def append_strategy(self, strategy_cls, strategy_kwargs):
+    def append_strategy(self, strategy_cls, strategy_name, strategy_kwargs):
         if not self.strategy_engine:
             logger.error("strategy engine is nor ready")
             return False
         if "account" not in strategy_kwargs:
             strategy_kwargs["account"] = self.account
-        self.strategy_engine.append(strategy_cls, strategy_kwargs)
+        self.strategy_engine.append(strategy_cls, strategy_name, strategy_kwargs)
 
     def start_data_engine(self):
         self.data_engine = DataEngine(self.event_engine)

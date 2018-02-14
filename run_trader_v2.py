@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 import logging
 import logging.handlers
+import os
 import signal
 import sys
 import time
 
-import os
-
-from trader_v2.collector.collector import DepthCollector
 from trader_v2.engine import MainEngine
 from trader_v2.strategy.strategy_three import StrategyThree
 
@@ -49,7 +47,12 @@ init_log()
 engine = MainEngine()
 engine.start("strategy")
 # 三号网格交易策略
-engine.append_strategy(StrategyThree, {"symbol": "swftcbtc", "sell_x": 8, "buy_x": 7, "per_count": 1})
+# engine.append_strategy(StrategyThree, "three_swftceth", {"symbol": "swftceth", "sell_x": 8, "buy_x": 7, "per_count": 1})
+engine.append_strategy(StrategyThree, "three_swftceth",
+                       {"symbol": "swftceth", "sell_x": 8, "buy_x": 7, "per_count": 250})
+engine.append_strategy(StrategyThree, "three_waxeth", {"symbol": "waxeth", "sell_x": 8, "buy_x": 7, "per_count": 15})
+engine.append_strategy(StrategyThree, "three_ethusdt",
+                       {"symbol": "ethusdt", "sell_x": 5, "buy_x": 5, "per_count": 0.04})
 # 一号套利策略
 # for coin in ["wax", "tnb", "hsr"]:
 #     engine.append_strategy(StrategyOne,strategy_kwargs={"coin" : coin})

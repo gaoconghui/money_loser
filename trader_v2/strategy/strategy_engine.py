@@ -141,13 +141,10 @@ class StrategyEngine(object):
         """
         self.delay_job_queue.add((func, kwargs), time.time() + delay)
 
-    def append(self, strategy_class, kwargs):
+    def append(self, strategy_class, strategy_name, kwargs):
         """
         添加一个策略并执行
         """
-        strategy_name = strategy_class.__name__
-        if "strategy_name" in kwargs:
-            strategy_name = kwargs.pop("strategy_name")
         kwargs["strategy_engine"] = self
         strategy = strategy_class(**kwargs)
         self.strategies[strategy_name] = strategy
