@@ -99,10 +99,10 @@ class StrategyThree(StrategyBase):
         # 上一个成交是买 马上下卖单，延迟下买单
         if self.sell_order and not self.buy_order:
             self.make_sell_order(self.loop_count)
-            self.strategy_engine.delay_call(self.make_buy_order, kwargs={"loop_count": self.loop_count}, delay=10)
+            self.strategy_engine.delay_call(self.make_buy_order, kwargs={"loop_count": self.loop_count}, delay=10 * 60)
         if self.buy_order and not self.sell_order:
             self.make_buy_order(self.loop_count)
-            self.strategy_engine.delay_call(self.make_sell_order, kwargs={"loop_count": self.loop_count}, delay=10)
+            self.strategy_engine.delay_call(self.make_sell_order, kwargs={"loop_count": self.loop_count}, delay=10 * 60)
         # 初始化的状态 或者是在一个方向延迟订单还没下，另一个方向已经完成的情况，这种情况下会因为loop count而取消上一个延迟下单
         if not self.buy_order and not self.sell_order:
             self.make_buy_order(self.loop_count)
@@ -113,7 +113,7 @@ class StrategyThree(StrategyBase):
             logger.error("make buy order error , loop count error")
             return
         if self.buy_order:
-            self.strategy_engine.cancel_order(self.buy_order)
+            self.strategy_engine.cancel_order(self.buy_order.job_id)
         logger.debug("last trade price : {p}".format(p=self.last_trade_price))
         low_price = round(min(self.base_price * (1 - self.buy_x), self.last_trade_price * (1 - self.buy_x / 2.0)),
                           self.account.price_precision(self.symbol))
