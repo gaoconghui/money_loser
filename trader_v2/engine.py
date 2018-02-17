@@ -305,6 +305,5 @@ class MainEngine(object):
         event = Event(EVENT_ORDER_CHANGE)
         event.dict_ = {"data": order}
         self.event_engine.put(event)
-        if key in self.order_change_callback:
-            for callback in self.order_change_callback[key]:
-                callback(order)
+        for callback in self.order_change_callback[key]:
+            callback(order)
