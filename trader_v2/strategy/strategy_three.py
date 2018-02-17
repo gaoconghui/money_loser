@@ -145,6 +145,7 @@ class StrategyThree(StrategyBase):
                                                           complete_callback=self.order_deal)
 
     def order_deal(self, order):
+        logger.debug("order deal , job_id : {j} , order_id : {o}".format(j=order.job_id, o=order.order_id))
         if order.job_id == self.buy_order.job_id:
             self.base_price = order.price
             self.buy_order = None
