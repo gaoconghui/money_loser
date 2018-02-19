@@ -306,4 +306,5 @@ class MainEngine(object):
         event.dict_ = {"data": order}
         self.event_engine.put(event)
         for callback in self.order_change_callback[key]:
+            logger.debug("start order change callback,callback : {c}".format(c=callback))
             callback(order)
