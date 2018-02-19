@@ -291,20 +291,19 @@ class MainEngine(object):
     def cancel_order(self, order, callback):
         self.trader.cancel_order(order, callback)
 
-    def register_querier(self, order, order_type, callback):
+    def register_querier(self, order, order_status, callback):
         """
         注册订单改变回调
         """
-        key = (order_type, order.job_id)
+        key = (order_status, order.job_id)
         self.order_change_callback[key].add(callback)
         self.trader.register_order_query(order, 5, self.on_order_change)
 
     def on_order_change(self, order):
         logger.debug("on order change")
-        key = (order.order_type, order.job_id)
+        key = (order.order_status, order.job_id)
         event = Event(EVENT_ORDER_CHANGE)
         event.dict_ = {"data": order}
         self.event_engine.put(event)
         for callback in self.order_change_callback[key]:
-            logger.debug("start order change callback,callback : {c}".format(c=callback))
             callback(order)
