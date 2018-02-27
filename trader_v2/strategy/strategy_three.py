@@ -115,7 +115,7 @@ class StrategyThree(StrategyBase):
         if self.buy_order:
             self.strategy_engine.cancel_order(self.buy_order.job_id)
         logger.debug("last trade price : {p}".format(p=self.last_trade_price))
-        low_price = round(min(self.base_price * (1 - self.buy_x), self.last_trade_price * (1 - self.buy_x / 2.0)),
+        low_price = round(min(self.base_price * (1 - self.buy_x), self.last_trade_price * (1 - self.buy_x / 4.0)),
                           self.account.price_precision(self.symbol))
         low_percent = (self.base_price - low_price) / self.base_price
         buy_low_count = round(
@@ -133,7 +133,7 @@ class StrategyThree(StrategyBase):
         if self.sell_order:
             self.strategy_engine.cancel_order(self.sell_order.job_id)
         logger.debug("last trade price : {p}".format(p=self.last_trade_price))
-        high_price = round(max(self.base_price * (1 + self.sell_x), self.last_trade_price * (1 + self.sell_x / 2.0)),
+        high_price = round(max(self.base_price * (1 + self.sell_x), self.last_trade_price * (1 + self.sell_x / 4.0)),
                            self.account.price_precision(self.symbol))
         high_percent = (high_price - self.base_price) / self.base_price
         sell_high_count = round(min(self.per_count * high_percent * 100, self.account.position(self.base_currency)),
