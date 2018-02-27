@@ -146,12 +146,12 @@ class StrategyThree(StrategyBase):
 
     def order_deal(self, order):
         logger.debug("order deal , job_id : {j} , order_id : {o}".format(j=order.job_id, o=order.order_id))
-        if order.job_id == self.buy_order.job_id:
+        if self.buy_order and order.job_id == self.buy_order.job_id:
             self.base_price = order.price
             self.buy_order = None
             logger.info("buy order complete")
             self.on_base_change()
-        elif order.job_id == self.sell_order.job_id:
+        elif self.sell_order and order.job_id == self.sell_order.job_id:
             self.base_price = order.price
             self.sell_order = None
             logger.info("sell order complete")
